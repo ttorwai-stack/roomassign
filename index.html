@@ -738,11 +738,11 @@ const Admin = (() => {
     const assigned = Object.keys(st.assign).length, stay = st.stayers.length;
     const unplaced = st.unplaced.map(id => byId[id]).filter(Boolean);
     const unresp = P().filter(p => ((st.choices[p.id]||{}).status || 'none') === 'none' && c.undecided !== 'stay');
-    return `<div class="card noprint"><div class="row">
+    return `<div class="card noprint"><div class="banner ${st.published?'ok':'wait'}" style="margin:0 0 8px"><b>${st.published ? '✔ 지금 공개 중이에요 — 연수생이 자기 방을 볼 수 있어요' : '⚠ 아직 비공개예요 — 연수생은 방을 볼 수 없어요. 확인이 끝나면 아래 [확정 · 연수생에게 공개]를 눌러 주세요.'}</b></div><div class="row">
         <button class="pri" id="run">자동 배정 (고정 유지)</button><button id="runAll" class="bad">처음부터 다시(고정 해제)</button>
         <button id="pub" class="${st.published?'':'pri'}">${st.published ? '확정 취소(연수생 화면에서 숨김)' : '확정 · 연수생에게 공개'}</button>
         <button id="csv">CSV 내려받기</button><button id="print">인쇄</button></div>
-      <p class="hint" style="margin:6px 0 0">이름표를 끌어서 방을 바꾸면 📌 고정되어, 다시 자동 배정해도 유지돼요. ${st.published?'<b style="color:var(--ok)">현재 공개 중</b>':'현재 비공개'}</p></div>
+      <p class="hint" style="margin:6px 0 0">이름표를 끌어서 방을 바꾸면 📌 고정되어, 다시 자동 배정해도 유지돼요. 자동 배정을 다시 실행하면 공개가 풀려요.</p></div>
     <div class="card"><b>배정 ${assigned}명</b> / 숙박 대상 ${stay}명 · 미응답 ${unresp.length}명(${c.undecided==='stay'?'숙박으로 처리':'제외'})
       ${st.warnings.length ? `<ul class="warnlist">${st.warnings.map(w => `<li>${esc(w.text)}</li>`).join('')}</ul>` : '<div class="saved">점검 결과 문제 없음</div>'}</div>
     <div class="card noprint"><h2>미배정 (${unplaced.length}명)</h2><div class="pool" data-drop="pool">${unplaced.map(p => chip(p)).join('') || '<span class="hint">없음</span>'}</div>
@@ -827,8 +827,8 @@ const Admin = (() => {
       case 'resetPhone': if (confirm('전화번호 등록을 해제할까요? (본인이 다시 등록해야 해요)')) await act('adm_resetPhone', pid); break;
       case 'ondolAll': { A.st.config.rooms.forEach(r => { if (r.type === 'ondol') r.use = t.dataset.v === '1'; }); render(); saveCfg(); break; }
       case 'clearCh': if (confirm('모든 연수생의 선택과 배정을 지웁니다. 계속할까요?')) await act('adm_clearChoices'); break;
-      case 'run': { const r = await act('adm_run', true); if (r) toast('배정했어요'); break; }
-      case 'runAll': if (confirm('고정한 배정도 모두 풀고 처음부터 다시 배정합니다.')) await act('adm_run', false); break;
+      case 'run': { if (A.st.published && !confirm('지금 공개 중이에요. 자동 배정을 다시 실행하면 공개가 풀려요. 계속할까요?')) return; const r = await act('adm_run', true); if (r) toast('배정했어요'); break; }
+      case 'runAll': if (confirm((A.st.published ? '지금 공개 중이에요. 다시 배정하면 공개가 풀려요. ' : '') + '고정한 배정도 모두 풀고 처음부터 다시 배정합니다.')) await act('adm_run', false); break;
       case 'pub': {
         if (!A.st.published && A.st.warnings.length && !confirm('점검 경고가 ' + A.st.warnings.length + '건 있어요. 그래도 공개할까요?')) return;
         if (!A.st.published && A.st.unplaced.length && !confirm('미배정 인원이 ' + A.st.unplaced.length + '명 있어요. 그래도 공개할까요?')) return;
