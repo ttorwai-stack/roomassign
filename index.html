@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>방 배정</title>
+<title>율곡연수원 숙소 배정</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{
@@ -125,7 +125,7 @@ td input[type=text]{width:100%}
 <body>
 <div id="bar"></div>
 <header>
-  <h1 id="title">방 배정<small id="course"></small></h1>
+  <h1 id="title"><small>율곡연수원</small><span id="ttl">숙소 배정</span></h1>
   <div class="tabs">
     <button class="tab on" id="tabU">연수생</button>
     <button class="tab" id="tabA">관리자</button>
@@ -157,6 +157,12 @@ function call(fn, ...a){
 let toastT;
 function toast(msg, err){ const t = $('#toast'); t.textContent = msg; t.className = err ? 'err' : ''; t.style.display = 'block'; clearTimeout(toastT); toastT = setTimeout(() => t.style.display = 'none', err ? 4500 : 2200); }
 const ls = { get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }, set(k,v){ try { localStorage.setItem(k,v); } catch(e){} }, del(k){ try { localStorage.removeItem(k); } catch(e){} } };
+const EV = (new URLSearchParams(location.search).get('c') || '').trim();
+const PUBLIC_BASE = 'https://ttorwai-stack.github.io/roomassign/';
+function setCourse(name){
+  const t = (name ? name + ' ' : '') + '숙소 배정';
+  $('#ttl').textContent = t; document.title = '율곡연수원 ' + t;
+}
 const GN = { M:'남', F:'여', '':'미입력' };
 
 // 숙소 배치도(숙소배치도.hwpx 구조): 2~4층은 위쪽 15~09호, 아래쪽 01~08호 / 1층은 위쪽 110~106호, 아래쪽 101~105호
@@ -266,14 +272,15 @@ const User = (() => {
   ];
 
   async function init(){
+    if (!EV){ U.boot = { noEvent: true }; render(); return; }
     try {
-      U.boot = await call('pub_bootstrap'); $('#course').textContent = U.boot.courseName;
+      U.boot = await call('pub_bootstrap', EV); setCourse(U.boot.courseName);
       if (phoneOk()) { try { await login(true); } catch(e){ ls.del('ra_phone'); U.phone = ''; } }
-    } catch(e){ toast(e.message, true); }
+    } catch(e){ U.boot = { error: e.message }; }
     render();
   }
   async function login(quiet){
-    U.view = await call('pub_login', U.phone);
+    U.view = await call('pub_login', EV, U.phone);
     ls.set('ra_phone', U.phone);
     U.edit = false; U.step = null;
     if (!quiet) render();
@@ -290,6 +297,8 @@ const User = (() => {
     if (mode !== 'user') return;
     const app = $('#app');
     if (!U.boot){ app.innerHTML = '<div class="card">불러오는 중…</div>'; return; }
+    if (U.boot.noEvent){ app.innerHTML = '<div class="card big-card"><h2>연수 주소로 들어와 주세요</h2><p class="hint">연수 담당자가 보낸 숙소 배정 주소(링크)로 접속해야 해요. 받은 링크를 다시 눌러 주세요.</p></div>'; return; }
+    if (U.boot.error){ app.innerHTML = '<div class="card big-card"><h2>들어갈 수 없어요</h2><p>' + esc(U.boot.error) + '</p></div>'; return; }
     const v = U.view;
     if (!v){ app.innerHTML = loginView(); bind(); return; }
     let h = '';
@@ -417,7 +426,7 @@ const User = (() => {
 
   async function submit(patch){
     const ch = Object.assign({}, U.view.choice, patch);
-    try { U.view = await call('pub_submit', U.view.me.id, U.phone, ch); }
+    try { U.view = await call('pub_submit', EV, U.view.me.id, U.phone, ch); }
     catch(e){ toast(e.message, true); }
     render();
   }
@@ -447,7 +456,7 @@ const User = (() => {
     const b = e.target.closest('[data-act]'); if (!b) return;
     const a = b.dataset.act;
     if (a === 'zone') await choose(b.dataset.z);
-    else if (a === 'gender'){ try { await call('pub_setGender', U.view.me.id, U.phone, b.dataset.g); U.view = await call('pub_me', U.view.me.id, U.phone); render(); } catch(er){ toast(er.message, true); } }
+    else if (a === 'gender'){ try { await call('pub_setGender', EV, U.view.me.id, U.phone, b.dataset.g); U.view = await call('pub_me', EV, U.view.me.id, U.phone); render(); } catch(er){ toast(er.message, true); } }
     else if (a === 'mate') await addMate(b.dataset.id);
     else if (a === 'unmate') await submit({ mates: U.view.choice.mates.filter(x => x !== b.dataset.id) });
     else if (a === 'filter'){ U.filter = b.dataset.t; render(); }
@@ -465,7 +474,7 @@ const User = (() => {
 
 // ═════════ 관리자 화면 ═════════
 const Admin = (() => {
-  const A = { pw: '', st: null, tab: 'people', hasPw: null, onlyBlank: false, q: '', sel: {} };
+  const A = { pw: '', ev: '', events: null, authed: false, st: null, tab: 'people', hasPw: null, onlyBlank: false, q: '', sel: {} };
   const TABS = [['people','① 명단'],['rooms','② 객실·옵션'],['status','③ 신청 현황'],['assign','④ 배정']];
   const STATUS = { none:'미응답', commute:'출근', mate:'같은 방 요청', stay:'숙박', style:'숙박(유형)' };
   const SHORT = { snore:'코', sensitive:'예', late:'늦', early:'일', quiet:'조' };
@@ -474,30 +483,54 @@ const Admin = (() => {
   async function render(){
     if (mode !== 'admin') return;
     const app = $('#app');
-    if (!A.st){
+    if (!A.authed){
       if (A.hasPw === null){
         try { A.hasPw = (await call('adm_status')).hasPw; } catch(e){ app.innerHTML = '<div class="card">' + esc(e.message) + '</div>'; return; }
-        const saved = ls.get('ra_adm'); if (saved && A.hasPw){ A.pw = saved; try { A.st = await call('adm_state', A.pw); } catch(e){ ls.del('ra_adm'); } }
+        const saved = ls.get('ra_adm'); if (saved && A.hasPw){ try { A.events = await call('adm_events', saved); A.pw = saved; A.authed = true; } catch(e){ ls.del('ra_adm'); } }
       }
-      if (!A.st){
+      if (!A.authed){
         app.innerHTML = `<div class="card" style="max-width:420px"><h2>${A.hasPw ? '관리자 로그인' : '처음 설정: 관리자 비밀번호 정하기'}</h2>
           <div class="row"><input type="password" id="pw" placeholder="비밀번호" style="flex:1"><button class="pri" id="login">${A.hasPw ? '들어가기' : '정하기'}</button></div>
           ${A.hasPw ? '' : '<p class="hint">4자 이상. 이 비밀번호를 아는 사람만 관리자 화면을 쓸 수 있어요.</p>'}</div>`;
         const go = async () => {
           const pw = $('#pw').value;
-          try { A.st = await call(A.hasPw ? 'adm_state' : 'adm_init', pw); A.pw = pw; A.hasPw = true; ls.set('ra_adm', pw); render(); }
+          try { if (!A.hasPw) await call('adm_init', pw); A.events = await call('adm_events', pw); A.pw = pw; A.hasPw = true; A.authed = true; ls.set('ra_adm', pw); render(); }
           catch(e){ toast(e.message, true); }
         };
         $('#login').onclick = go; $('#pw').onkeydown = e => { if (e.key === 'Enter') go(); };
         return;
       }
     }
-    const t = A.tab;
-    let h = `<div class="tabs noprint" style="margin-bottom:10px">${TABS.map(([k,l]) => `<button class="tab ${t===k?'on':''}" data-tab="${k}">${l}</button>`).join('')}
+    if (!A.ev){ setCourse(''); app.innerHTML = vEvents(); return; }
+    if (!A.st){ try { A.st = await call('adm_state', A.pw, A.ev); } catch(e){ toast(e.message, true); A.ev = ''; render(); return; } }
+    const t = A.tab, evName = A.st.event.name, link = PUBLIC_BASE + '?c=' + A.ev;
+    let h = `<div class="card noprint"><div class="row"><button id="toEvents">← 연수 목록</button><b style="font-size:16px">${esc(evName)}</b>${A.st.published ? '<span class="badge" style="background:var(--ok-bg);color:var(--ok)">공개 중</span>' : ''}</div>
+      <div class="row" style="margin-top:6px"><span class="hint">연수생 주소</span><input type="text" readonly value="${esc(link)}" style="flex:1;min-width:220px" onclick="this.select()"><button class="sm" data-act="copyLink" data-link="${esc(link)}">복사</button></div></div>
+      <div class="tabs noprint" style="margin-bottom:10px">${TABS.map(([k,l]) => `<button class="tab ${t===k?'on':''}" data-tab="${k}">${l}</button>`).join('')}
       <button class="tab" id="logout" style="margin-left:auto">로그아웃</button></div>`;
     h += t === 'people' ? vPeople() : t === 'rooms' ? vRooms() : t === 'status' ? vStatus() : vAssign();
     app.innerHTML = h;
-    $('#course').textContent = A.st.config.courseName;
+    setCourse(evName);
+  }
+
+  // ── 연수 목록 ──
+  function vEvents(){
+    const evs = A.events || [], act = evs.filter(e => !e.archived), arc = evs.filter(e => e.archived);
+    const row = e => { const link = PUBLIC_BASE + '?c=' + e.id; return `<tr data-eid="${e.id}">
+      <td><b>${esc(e.name)}</b>${e.published ? ' <span class="badge" style="background:var(--ok-bg);color:var(--ok)">공개 중</span>' : ''}${e.archived ? ' <span class="badge">보관됨</span>' : ''}</td>
+      <td>${e.people}명</td>
+      <td style="min-width:220px"><input type="text" readonly value="${esc(link)}" style="width:100%;font-size:12px" onclick="this.select()"></td>
+      <td style="white-space:nowrap"><button class="sm pri" data-act="openEv">열기</button> <button class="sm" data-act="copyLink" data-link="${esc(link)}">주소 복사</button>
+        <button class="sm" data-act="renameEv">이름 변경</button> <button class="sm" data-act="archiveEv" data-v="${e.archived ? 0 : 1}">${e.archived ? '보관 해제' : '보관'}</button></td></tr>`; };
+    return `<div class="card"><h2>새 연수 만들기</h2>
+        <p class="hint">연수마다 명단·전화번호·방 설정·배정이 따로 관리되고, 연수생용 주소도 따로 만들어져요.</p>
+        <div class="row"><input type="text" id="newName" placeholder="연수 이름 (예: 6급 승진자과정 4기)" style="flex:1;min-width:200px">
+        <select id="copyFrom"><option value="">방 설정: 기본값으로 시작</option>${evs.map(e => `<option value="${e.id}">방 설정: ${esc(e.name)}에서 복사</option>`).join('')}</select>
+        <button class="pri" data-act="createEv">만들기</button></div></div>
+      <div class="card"><h2>진행 중인 연수 (${act.length})</h2>
+        <div class="scroll" style="max-height:none"><table><thead><tr><th>연수</th><th>인원</th><th>연수생 주소</th><th></th></tr></thead><tbody>${act.map(row).join('') || '<tr><td colspan="4" class="hint">없음</td></tr>'}</tbody></table></div></div>
+      ${arc.length ? `<div class="card"><h2>보관된 연수 (${arc.length})</h2><div class="scroll" style="max-height:none"><table><tbody>${arc.map(row).join('')}</tbody></table></div><p class="hint">보관하면 연수생이 그 주소로 들어갈 수 없어요. 데이터는 남아 있어요.</p></div>` : ''}
+      <div class="card noprint"><button id="logout">로그아웃</button></div>`;
   }
 
   const P = () => A.st.people;
@@ -559,7 +592,6 @@ const Admin = (() => {
     const floors = [...new Set(c.rooms.map(r => r.floor))].sort((a,b) => b-a);
     const gsel = f => `<select data-fg="${f}">${[['M','남자 층'],['F','여자 층'],['','남녀 혼용']].map(([v,l]) => `<option value="${v}" ${(c.floorGender[f]||'')===v?'selected':''}>${l}</option>`).join('')}</select>`;
     return `<div class="card"><h2>기본 옵션 <span class="saved" id="savedMsg"></span></h2>
-      <div class="row" style="margin-bottom:6px"><label>연수명 <input type="text" id="cn" value="${esc(c.courseName)}" placeholder="예: 5급 승진자과정" style="width:260px"></label></div>
       <div class="row">
         <label>방당 인원 <select id="per">${[1,2,3,4,5,6].map(n => `<option ${c.perRoom===n?'selected':''}>${n}</option>`).join('')}</select>명</label>
         <label>온돌방 정원 <select id="ond">${[1,2,3,4,5,6,8].map(n => `<option ${c.ondolCap===n?'selected':''}>${n}</option>`).join('')}</select>명</label>
@@ -586,7 +618,7 @@ const Admin = (() => {
     clearTimeout(saveT);
     const m = $('#savedMsg'); if (m) m.textContent = '저장 중…';
     saveT = setTimeout(async () => {
-      try { A.st = await call('adm_saveConfig', A.pw, A.st.config); const m2 = $('#savedMsg'); if (m2) m2.textContent = '저장됨'; $('#course').textContent = A.st.config.courseName; }
+      try { A.st = await call('adm_saveConfig', A.pw, A.ev, A.st.config); const m2 = $('#savedMsg'); if (m2) m2.textContent = '저장됨'; }
       catch(e){ toast(e.message, true); }
     }, 500);
   }
@@ -646,7 +678,7 @@ const Admin = (() => {
 
   // ── 이벤트 ──
   async function act(fn, ...args){
-    try { const r = await call(fn, A.pw, ...args); if (r && r.config){ A.st = r; render(); } return r; }
+    try { const r = await call(fn, A.pw, A.ev, ...args); if (r && r.config){ A.st = r; render(); } return r; }
     catch(e){ toast(e.message, true); render(); }
   }
   async function drop(id, target){
@@ -663,7 +695,17 @@ const Admin = (() => {
   document.addEventListener('click', async e => {
     if (mode !== 'admin') return;
     const t = e.target;
-    if (t.id === 'logout'){ ls.del('ra_adm'); A.st = null; A.pw = ''; render(); return; }
+    if (t.id === 'logout'){ ls.del('ra_adm'); A.st = null; A.pw = ''; A.ev = ''; A.authed = false; A.events = null; render(); return; }
+    if (t.id === 'toEvents'){ A.ev = ''; A.st = null; A.tab = 'people'; try { A.events = await call('adm_events', A.pw); } catch(er){ toast(er.message, true); } render(); return; }
+    const eRow = t.closest('[data-eid]'), eid = eRow && eRow.dataset.eid;
+    if (t.dataset.act === 'copyLink'){ try { await navigator.clipboard.writeText(t.dataset.link); toast('주소를 복사했어요'); } catch(er){ prompt('아래 주소를 복사하세요', t.dataset.link); } return; }
+    if (t.dataset.act === 'openEv'){ A.ev = eid; A.st = null; A.tab = 'people'; render(); return; }
+    if (t.dataset.act === 'createEv'){
+      const name = $('#newName').value.trim(); if (!name){ toast('연수 이름을 입력해 주세요', true); return; }
+      try { const r = await call('adm_createEvent', A.pw, name, $('#copyFrom').value); A.events = r.events; toast('연수를 만들었어요'); render(); } catch(er){ toast(er.message, true); }
+      return; }
+    if (t.dataset.act === 'renameEv'){ const cur = (A.events.find(x => x.id === eid) || {}).name, n = prompt('연수 이름', cur); if (n && n.trim()){ try { A.events = await call('adm_renameEvent', A.pw, eid, n); render(); } catch(er){ toast(er.message, true); } } return; }
+    if (t.dataset.act === 'archiveEv'){ try { A.events = await call('adm_archiveEvent', A.pw, eid, t.dataset.v === '1'); render(); } catch(er){ toast(er.message, true); } return; }
     if (t.dataset.tab){ A.tab = t.dataset.tab; render(); return; }
     if (!A.st) return;
     const row = t.closest('[data-pid]'), pid = row && row.dataset.pid;
@@ -685,7 +727,7 @@ const Admin = (() => {
         if (!gs.length){ toast('붙여넣은 내용이 없어요', true); return; }
         if (gs.length !== ids.length && !confirm(`성별 ${gs.length}개, 표시된 명단 ${ids.length}명으로 개수가 달라요. 앞에서부터 적용할까요?`)) return;
         await act('adm_setGenders', ids, gs); toast('적용됨'); break; }
-      case 'gender': { const p = P().find(x => x.id === pid), nx = p.gender === 'M' ? 'F' : p.gender === 'F' ? '' : 'M'; p.gender = nx; render(); call('adm_updatePerson', A.pw, pid, { gender: nx }).catch(er => toast(er.message, true)); break; }
+      case 'gender': { const p = P().find(x => x.id === pid), nx = p.gender === 'M' ? 'F' : p.gender === 'F' ? '' : 'M'; p.gender = nx; render(); call('adm_updatePerson', A.pw, A.ev, pid, { gender: nx }).catch(er => toast(er.message, true)); break; }
       case 'del': { const p = P().find(x => x.id === pid); if (confirm(p.name + ' 님을 명단에서 삭제할까요?')) await act('adm_deletePeople', [pid]); break; }
       case 'resetPhone': if (confirm('전화번호 등록을 해제할까요? (본인이 다시 등록해야 해요)')) await act('adm_resetPhone', pid); break;
       case 'ondolAll': { A.st.config.rooms.forEach(r => { if (r.type === 'ondol') r.use = t.dataset.v === '1'; }); render(); saveCfg(); break; }
@@ -710,14 +752,13 @@ const Admin = (() => {
     if (mode !== 'admin' || !A.st) return;
     const t = e.target, row = t.closest('[data-pid]'), pid = row && row.dataset.pid, c = A.st.config;
     if (t.dataset.f === 'phone' && pid){
-      try { const r = await call('adm_updatePerson', A.pw, pid, { phone: t.value }); const p = P().find(x => x.id === pid); p.claimed = !!r.last4; p.last4 = r.last4 || ''; toast('번호 저장됨'); render(); }
+      try { const r = await call('adm_updatePerson', A.pw, A.ev, pid, { phone: t.value }); const p = P().find(x => x.id === pid); p.claimed = !!r.last4; p.last4 = r.last4 || ''; toast('번호 저장됨'); render(); }
       catch(er){ toast(er.message, true); t.value = ''; }
       return; }
     if (t.dataset.f && pid){ const p = P().find(x => x.id === pid); const v = t.value.trim(); if (t.dataset.f === 'name' && !v){ t.value = p.name; return; } p[t.dataset.f] = v;
-      call('adm_updatePerson', A.pw, pid, { [t.dataset.f]: v }).then(() => toast('저장됨')).catch(er => toast(er.message, true)); return; }
+      call('adm_updatePerson', A.pw, A.ev, pid, { [t.dataset.f]: v }).then(() => toast('저장됨')).catch(er => toast(er.message, true)); return; }
     if (t.dataset.act === 'setStatus'){ const old = A.st.choices[pid] || {}; await act('adm_setChoice', pid, { status: t.value, mates: old.mates, traits: old.traits, sameWish: old.sameWish, note: old.note }); return; }
-    if (t.id === 'cn') c.courseName = t.value;
-    else if (t.id === 'per') c.perRoom = Number(t.value);
+    if (t.id === 'per') c.perRoom = Number(t.value);
     else if (t.id === 'ond') c.ondolCap = Number(t.value);
     else if (t.id === 'bal') c.balance = t.checked;
     else if (t.id === 'cross') c.allowCross = t.checked;
