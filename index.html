@@ -70,14 +70,6 @@ td input[type=text]{width:100%}
 .scroll{max-height:60vh;overflow:auto;border:1px solid var(--line);border-radius:8px}
 .floor{margin-bottom:12px}
 .floor h3{margin:0 0 6px;font-size:14px}
-.rooms{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
-.room{border:1px solid var(--line);border-radius:8px;padding:6px;min-height:84px;background:var(--card)}
-.room.over{outline:2px solid var(--pri)}
-.room.off{opacity:.45}
-.room.gM{background:var(--m-bg)}.room.gF{background:var(--f-bg)}
-.room.warn{border-color:var(--bad)}
-.room b{font-size:13px}
-.room .cnt{float:right;font-size:12px;color:var(--sub)}
 .pool{min-height:54px;border:2px dashed var(--line);border-radius:10px;padding:4px}
 .pool.over{border-color:var(--pri);background:var(--pri-bg)}
 #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#1d2733;color:#fff;padding:10px 16px;border-radius:10px;z-index:300;font-size:14px;max-width:90vw;display:none}
@@ -106,20 +98,31 @@ td input[type=text]{width:100%}
 .bigchk{display:flex;padding:10px 0;font-size:16px;border-bottom:1px solid var(--line)}
 .okmark{width:48px;height:48px;border-radius:50%;background:var(--ok-bg);color:var(--ok);display:flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:6px}
 /* 배치도 */
-.plan{overflow-x:auto;padding-bottom:4px}
-.plan-in{display:inline-block;min-width:100%}
-.prow{display:flex;gap:4px;margin-bottom:4px;align-items:stretch}
-.pfix{flex:0 0 68px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--sub);font-size:12px;display:flex;align-items:center;justify-content:center;text-align:center;padding:4px}
-.pfix.w2{flex-basis:90px}.pfix.F{background:var(--f-bg)}.pfix.M{background:var(--m-bg)}
-.pfix.lift{flex:1 1 auto;min-height:26px;background:repeating-linear-gradient(135deg,var(--bg) 0 6px,var(--line) 6px 7px)}
-.pfix.stairs{flex-basis:68px;background:repeating-linear-gradient(0deg,var(--bg) 0 5px,var(--line) 5px 6px)}
-.pfix.blank{border-style:dashed;background:transparent}
-.prow .room{flex:0 0 98px;width:98px}
-.room.ondol{background-image:repeating-linear-gradient(45deg,transparent 0 6px,rgba(128,128,128,.12) 6px 7px)}
-.room.mine{outline:3px solid var(--pri);background:var(--pri-bg)}
-.room.dim{opacity:.55}
+.plan{--cw:86px;--ch:128px;overflow-x:auto;padding-bottom:4px}
+.plan.sm{--cw:24px;--ch:52px}.plan.sm .pgrid{gap:2px;grid-template-rows:var(--ch) 22px var(--ch)}
+.pgrid{display:grid;grid-template-columns:repeat(11,var(--cw));grid-template-rows:var(--ch) 30px var(--ch);gap:3px;width:max-content}
+.pfix{border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--sub);font-size:12px;padding:4px 6px;display:flex;align-items:flex-start;justify-content:flex-start;overflow:hidden}
+.pfix .plabel{font-weight:600}
+.pfix.M{background:var(--m-bg);color:var(--m)}.pfix.F{background:var(--f-bg);color:var(--f)}
+.pfix.stairs{background:repeating-linear-gradient(0deg,var(--card) 0 8px,var(--line) 8px 9px)}
+.pfix.stairs .plabel{background:var(--card);padding:0 5px;border-radius:4px;color:var(--ink)}
+.pfix.lobby{background:var(--pri-bg);color:var(--pri);font-size:15px}.pfix.entr{border-top-left-radius:6px}
+.pfix.conn{border-bottom:2px dashed var(--sub);margin-bottom:-3px;border-bottom-left-radius:0;border-bottom-right-radius:0}
+.pfix.corr{border:0;border-top:1px dashed var(--line);border-bottom:1px dashed var(--line);border-radius:0;background:transparent;align-items:center;justify-content:space-between;padding:0 8px}
+.pfix.corr .plabel{width:100%;display:flex;justify-content:space-between;font-weight:400}
+.pfix.corr .lift{font-style:italic}
+.pfix.blockoff,.pfix.blank{background-image:repeating-linear-gradient(135deg,transparent 0 7px,rgba(128,128,128,.3) 7px 8px)}
+.room{border:1px solid var(--line);border-radius:8px;padding:4px 5px;background:var(--card);overflow:hidden;min-width:0}
+.room.over{outline:2px solid var(--pri)}
+.room.off{background-image:repeating-linear-gradient(135deg,transparent 0 7px,rgba(128,128,128,.3) 7px 8px)}
+.room.gM{background-color:var(--m-bg)}.room.gF{background-color:var(--f-bg)}
+.room.warn{border-color:var(--bad)}
+.room.ondol .roomno::after{content:" 온돌";font-size:10px;color:var(--sub);font-weight:400}
+.room.mine{outline:3px solid var(--pri);background-color:var(--pri-bg)}
+.room.dim{opacity:.6}
 .roomno{font-weight:700;font-size:13px}
-.optrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid var(--line)}
+.room .cnt{float:right;font-size:11px;color:var(--sub)}
+.plan.sm .pfix{font-size:7px;padding:1px;line-height:1.1}.plan.sm .plabel{font-weight:400;word-break:keep-all}.plan.sm .room{padding:1px;text-align:center}.plan.sm .roomno{font-size:9px;white-space:nowrap}.plan.sm .pfix.corr .plabel{font-size:7px}.plan.sm .room.ondol .roomno::after{content:""}
 @media print{header,.noprint,.tabs{display:none!important}.card{border:0}body{background:#fff;color:#000}}
 </style>
 </head>
@@ -175,24 +178,44 @@ const DEFAULT_OPTIONS = [
 ];
 const GN = { M:'남', F:'여', '':'미입력' };
 
-// 숙소 배치도(숙소배치도.hwpx 구조): 2~4층은 위쪽 15~09호, 아래쪽 01~08호 / 1층은 위쪽 110~106호, 아래쪽 101~105호
-function planLayout(f){
-  if (f === 1) return { top:[110,109,108,107,106], bottom:[101,102,103,104,105], wc:'화장실(남)', side:'', low:'사감실' };
-  const t = [], b = [];
-  for (let n = 15; n >= 9; n--) t.push(f*100+n);
-  for (let n = 1; n <= 8; n++) b.push(f*100+n);
-  return { top:t, bottom:b, wc: f % 2 ? '화장실(남)' : '화장실(여)', side: f === 4 ? '외부 출입구' : '이야기 나눔방', low:'' };
-}
-function planHtml(f, cfg, cellFn){
-  const L = planLayout(f), byId = {}; cfg.rooms.forEach(r => byId[r.id] = r);
-  const cell = id => byId[String(id)] ? cellFn(byId[String(id)]) : `<div class="pfix blank" style="flex:0 0 98px">${id}<br>없음</div>`;
-  const used = new Set(L.top.concat(L.bottom).map(String));
+// 숙소 배치도(숙소배치도.pdf 기준). 11칸 격자: 위쪽 줄(1) · 복도(2) · 아래쪽 줄(3)
+//  2~4층: 위쪽 [화장실][샤워실][나눔방/외부출입구][x15 … x09][준비실] / 아래쪽 [계단][x01 … x08][계단]
+//  1층  : 위쪽 [화장실][샤워실][로비…][110 … 106][준비실] / 아래쪽 [계단][현관][사감실][101 … 105][계단]
+//  승강기는 배치도 밖(왼쪽 벽 뒤)에 있어 복도 왼쪽 끝에 표시만 한다. 모든 실은 같은 크기, 이름·호수는 칸 위쪽에 쓴다.
+function planHtml(f, cfg, cellFn, opt){
+  opt = opt || {};
+  const byId = {}; cfg.rooms.forEach(r => byId[r.id] = r);
+  const g = (f === 1 || f === 3) ? 'M' : 'F', gn = g === 'M' ? '남자' : '여자';
+  const out = [], used = new Set();
+  const fix = (col, span, row, rspan, label, cls) => out.push(`<div class="pfix ${cls || ''}" style="grid-column:${col}/span ${span};grid-row:${row}/span ${rspan}"><span class="plabel">${label}</span></div>`);
+  const room = (id, col, row) => {
+    id = String(id); used.add(id);
+    const r = byId[id];
+    out.push(r ? cellFn(r).replace('<div class="room', `<div style="grid-column:${col};grid-row:${row}" class="room`)
+               : `<div class="pfix blank" style="grid-column:${col};grid-row:${row}"><span class="plabel">${id}호</span></div>`);
+  };
+  if (f === 1){
+    fix(1, 1, 1, 1, '남자 화장실', 'M'); fix(2, 1, 1, 1, '남자 샤워실', 'M');
+    fix(3, 3, 1, 2, '로비', 'lobby');
+    for (let j = 0; j < 5; j++) room(110 - j, 6 + j, 1);
+    fix(11, 1, 1, 1, '준비실');
+    fix(1, 2, 2, 1, '<span class="lift">◀ 승강기(왼쪽 벽 뒤)</span>', 'corr'); fix(6, 6, 2, 1, '복도', 'corr');
+    fix(1, 2, 3, 1, '계단', 'stairs'); fix(3, 2, 3, 1, '현관', 'lobby entr'); fix(5, 1, 3, 1, '사감실', 'blockoff');
+    for (let j = 0; j < 5; j++) room(101 + j, 6 + j, 3);
+    fix(11, 1, 3, 1, '계단', 'stairs');
+  } else {
+    fix(1, 1, 1, 1, gn + ' 화장실', g); fix(2, 1, 1, 1, gn + ' 샤워실', g);
+    fix(3, 1, 1, 1, f === 4 ? '외부 출입구' : '이야기 나눔방', 'conn');
+    for (let n = 15; n >= 9; n--) room(f * 100 + n, 4 + (15 - n), 1);
+    fix(11, 1, 1, 1, '준비실');
+    fix(1, 11, 2, 1, '<span class="lift">◀ 승강기(왼쪽 벽 뒤)</span><span>복도</span>', 'corr');
+    fix(1, 2, 3, 1, '계단', 'stairs');
+    for (let n = 1; n <= 8; n++) room(f * 100 + n, 2 + n, 3);
+    fix(11, 1, 3, 1, '계단', 'stairs');
+  }
   const extra = cfg.rooms.filter(r => r.floor === f && !used.has(r.id));
-  const g = f === 1 || f === 3 ? 'M' : 'F';
-  return `<div class="plan"><div class="plan-in">
-    <div class="prow"><div class="pfix w2 ${g}">${L.wc}</div><div class="pfix">샤워실</div><div class="pfix w2">${L.side || ''}</div>${L.top.map(cell).join('')}<div class="pfix">준비실</div></div>
-    <div class="prow"><div class="pfix lift">승강기 · 계단</div></div>
-    <div class="prow"><div class="pfix stairs"></div>${L.low ? `<div class="pfix w2">${L.low}</div>` : ''}${L.bottom.map(cell).join('')}${extra.map(r => cellFn(r)).join('')}</div></div></div>`;
+  extra.forEach((r, i) => out.push(cellFn(r).replace('<div class="room', `<div style="grid-column:${3 + i};grid-row:4" class="room`)));
+  return `<div class="plan ${opt.sm ? 'sm' : ''}"><div class="pgrid" style="${extra.length ? 'grid-template-rows:var(--ch) 30px var(--ch) var(--ch)' : ''}">${out.join('')}</div></div>`;
 }
 
 // ───────── 드래그앤드롭 (마우스·터치 공용, 탭 선택도 지원) ─────────
@@ -410,7 +433,7 @@ const User = (() => {
     if (v.room){
       h += `<div class="roomcard">${v.room.floor}층 ${esc(v.room.id)}호${v.room.type==='ondol'?' <span class="badge">온돌방</span>':''}</div>
         <p style="margin:8px 0 0">같은 방: ${v.room.mates.length ? v.room.mates.map(m => `<b>${esc(m.name)}</b>${m.org?` <span class="hint">${esc(m.org)}</span>`:''}`).join(', ') : '혼자 사용'}</p></div>
-        <div class="card"><h2>${v.room.floor}층 배치도 <span class="hint">(파란 테두리가 내 방)</span></h2>${planHtml(v.room.floor, { rooms: v.rooms }, r => `<div class="room ${r.id===v.room.id?'mine':'dim'} ${r.type==='ondol'?'ondol':''}"><span class="roomno">${r.id}</span>${r.id===v.room.id?'<div style="font-size:12px">내 방</div>':''}</div>`)}`;
+        <div class="card"><h2>${v.room.floor}층 배치도 <span class="hint">(★ 파란 테두리가 내 방)</span></h2>${planHtml(v.room.floor, { rooms: v.rooms }, r => `<div class="room ${r.id===v.room.id?'mine':'dim'} ${r.type==='ondol'?'ondol':''}"><span class="roomno">${r.id}</span>${r.id===v.room.id?'<div style="font-size:14px;color:var(--pri)">★</div>':''}</div>`, { sm: true })}`;
     } else {
       h += `<div class="banner wait" style="margin:8px 0 0">${status()==='commute' ? '출근을 선택하셨어요. 배정된 숙소가 없습니다.' : '배정된 방이 없습니다. 연수 담당자에게 문의해 주세요.'}</div>`;
     }
@@ -610,11 +633,11 @@ const Admin = (() => {
         <td><input type="number" min="1" max="9" style="width:60px" data-fo="${f}" value="${c.floorOrder.indexOf(f)+1}"></td><td>${rs.filter(r=>r.use).length} / ${rs.length}</td></tr>`; }).join('')}</tbody></table></div>
     <div class="card"><h2>방별 사용 · 정원</h2>
       <div class="row" style="margin-bottom:6px"><button class="sm" data-act="ondolAll" data-v="1">온돌방 모두 사용</button><button class="sm" data-act="ondolAll" data-v="0">온돌방 모두 사용 안 함</button>
-      <span class="hint">정원 칸을 비워 두면 기본(방당 인원/온돌 정원)을 따릅니다.</span></div>
-      ${floors.map(f => `<div class="floor"><h3>${f}층</h3><div class="rooms">${c.rooms.filter(r => r.floor === f).map(r => `<div class="room ${r.use?'':'off'}" data-rid="${r.id}">
-        <label class="chk"><input type="checkbox" data-ru ${r.use?'checked':''}><b>${r.id}호</b></label>${r.type==='ondol'?'<span class="badge">온돌</span>':''}
-        <div class="row" style="margin-top:4px">정원 <input type="number" min="1" max="8" style="width:56px" data-rc value="${r.cap||''}" placeholder="${Assign_cap(r,c)}"></div>
-        ${r.note?`<div class="hint">${esc(r.note)}</div>`:''}</div>`).join('')}</div></div>`).join('')}</div>`;
+      <span class="hint">배치도의 호수 칸을 체크하면 사용, 해제하면 빗금(사용 안 함)이에요. 정원 칸을 비우면 기본(방당 인원/온돌 정원)을 따라요.</span></div>
+      ${floors.map(f => `<div class="floor"><h3>${f}층</h3>${planHtml(f, c, r => `<div class="room ${r.use?'':'off'} ${r.type==='ondol'?'ondol':''}" data-rid="${r.id}">
+        <label class="chk" style="margin:0"><input type="checkbox" data-ru ${r.use?'checked':''}><span class="roomno">${r.id}호</span></label>
+        <div class="row" style="margin-top:4px;gap:3px;font-size:11px;flex-wrap:nowrap">정원<input type="number" min="1" max="8" style="width:46px;padding:2px 4px" data-rc value="${r.cap||''}" placeholder="${Assign_cap(r,c)}"></div>
+        ${r.note ? `<div class="hint" style="font-size:10px;line-height:1.2">${esc(r.note)}</div>` : ''}</div>`)}</div>`).join('')}</div>`;
   }
   const KINDS = [['commute','출근 (방 필요 없음)'],['stay','숙박'],['pick','숙박 + 같은 방 지정 화면'],['style','숙박 + 자동 배정 유형']];
   const CIRC_A = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳';
@@ -684,7 +707,7 @@ const Admin = (() => {
       ${st.unplaced.length && Object.keys(st.assign).length ? '' : ''}</div>
     ${floors.map(f => `<div class="floor card"><h3>${f}층 <span class="badge">${({M:'남자 층',F:'여자 층','':'혼용'})[c.floorGender[f]||'']}</span></h3>${planHtml(f, c, r => {
       const occ = (rooms[r.id]||[]).map(id => byId[id]).filter(Boolean), g = occ[0] ? occ[0].gender : '', cap = cap_(r, c);
-      return `<div class="room ${r.use?'':'off'} ${r.type==='ondol'?'ondol':''} ${g?'g'+g:''} ${badRooms[r.id]?'warn':''}" data-drop="room:${r.id}"><span class="roomno">${r.id}</span>${r.type==='ondol'?'<span class="badge">온돌</span>':''}<span class="cnt">${occ.length}/${cap}</span><div>${occ.map(p => chip(p)).join('')}</div></div>`; })}</div>`).join('')}`;
+      return `<div class="room ${r.use?'':'off'} ${r.type==='ondol'?'ondol':''} ${g?'g'+g:''} ${badRooms[r.id]?'warn':''}" data-drop="room:${r.id}"><span class="roomno">${r.id}호</span><span class="cnt">${occ.length}/${cap}</span><div>${occ.map(p => chip(p)).join('')}</div></div>`; })}</div>`).join('')}`;
   }
   const cap_ = (r, c) => r.cap || (r.type === 'ondol' ? c.ondolCap : c.perRoom);
 
