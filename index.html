@@ -101,34 +101,33 @@ td input[type=text]{width:100%}
 .plan{--wall:#6b7580;--gray:#dfe3e8;--yellow:#fff1a8;--cw:86px;--ch:128px;overflow-x:auto;padding:2px 2px 4px}
 @media (prefers-color-scheme:dark){.plan{--wall:#9aa5b1;--gray:#2c3540;--yellow:#4d4519}}
 .plan.sm{--cw:24px;--ch:52px}
-.pgrid{display:grid;grid-template-columns:repeat(11,var(--cw));grid-template-rows:var(--ch) 30px var(--ch);gap:0;width:max-content}
+.pgrid{display:grid;grid-template-columns:repeat(11,var(--cw));grid-template-rows:var(--ch) 30px var(--ch);gap:4px;width:max-content}
 .pfix{min-width:0;overflow:hidden;font-size:12px;color:var(--sub);display:flex;align-items:flex-start;justify-content:flex-start;padding:4px 5px}
 .pfix .plabel{font-weight:600}
-.pfix.box{border:1px solid var(--wall);margin:0 -1px -1px 0;background:var(--card);color:var(--ink)}
+.pfix.box{border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)}
 .pfix.box.M{background:var(--m-bg)}.pfix.box.F{background:var(--f-bg)}
 .pfix.box.off{background:var(--gray);color:var(--sub)}
 .pfix.box.yellow{background:var(--yellow);color:var(--ink)}
 .pfix.open .plabel{font-weight:400}
 .pfix.open.entr{align-items:flex-end;justify-content:center;font-size:13px}
 .pfix.plain{align-items:center;padding:0 6px}.pfix.plain .lift{font-style:italic;font-size:12px}
-.pfix.stairs{padding:3px}
+.pfix.stairs{padding:2px 6px}
 .stairsvg{width:100%;height:100%;display:block}
-.stairsvg rect,.stairsvg line{fill:none;stroke:var(--wall);stroke-width:1;vector-effect:non-scaling-stroke}
-.stairsvg rect.rail{fill:var(--card)}
-.room{border:1px solid var(--wall);margin:0 -1px -1px 0;padding:3px 4px;background:var(--card);overflow:hidden;min-width:0}
-.room.over{outline:2px solid var(--pri);outline-offset:-2px}
+.stairsvg line{stroke:var(--wall);stroke-width:1.2;vector-effect:non-scaling-stroke}
+.room{border:1px solid var(--line);border-radius:10px;padding:5px 6px;background:var(--card);overflow:hidden;min-width:0}
+.room.over{outline:2px solid var(--pri)}
 .room.off{background:var(--gray)}
 .room.gM{background-color:var(--m-bg)}.room.gF{background-color:var(--f-bg)}
-.room.warn{outline:2px solid var(--bad);outline-offset:-2px}
+.room.warn{border-color:var(--bad);box-shadow:0 0 0 1px var(--bad)}
 .room.ondol .roomno::after{content:" 온돌";font-size:10px;color:var(--sub);font-weight:400}
-.room.mine{outline:3px solid var(--pri);outline-offset:-3px;background-color:var(--pri-bg)}
+.room.mine{outline:3px solid var(--pri);background-color:var(--pri-bg)}
 .room.dim{opacity:.55}
 .roomno{font-weight:700;font-size:13px}
 .room .cnt{float:right;font-size:11px;color:var(--sub)}
-.room .tag{display:flex;width:100%;border-radius:3px;margin:2px 0 0;padding:1px 5px;font-size:12px;cursor:grab}
+.room .tag{display:flex;width:100%;border-radius:999px;margin:3px 0 0;padding:2px 8px;font-size:12px;cursor:grab}
 .room .tag small{display:none}
 .pool .tag{margin:2px;padding:3px 8px;font-size:13px}
-.plan.sm .pfix{font-size:7px;padding:1px;line-height:1.1}.plan.sm .plabel{font-weight:400;word-break:keep-all}.plan.sm .room{padding:1px;text-align:center}.plan.sm .roomno{font-size:9px;white-space:nowrap}.plan.sm .room.ondol .roomno::after{content:""}.plan.sm .pfix.plain .lift{font-size:7px}.plan.sm .pfix.stairs{padding:1px}
+.plan.sm .pfix{font-size:7px;padding:1px;line-height:1.1}.plan.sm .plabel{font-weight:400;word-break:keep-all}.plan.sm .room{padding:1px;text-align:center}.plan.sm .roomno{font-size:9px;white-space:nowrap}.plan.sm .room.ondol .roomno::after{content:""}.plan.sm .pfix.plain .lift{font-size:7px}.plan.sm .pfix.stairs{padding:1px 2px}.plan.sm .pgrid{gap:2px}.plan.sm .room,.plan.sm .pfix.box{border-radius:5px}
 .savebar{position:sticky;top:58px;z-index:15;display:flex;gap:10px;align-items:center;padding:8px 12px}
 .savebar.dirty{border-color:var(--warn);background:var(--warn-bg)}
 @media print{header,.noprint,.tabs{display:none!important}.card{border:0}body{background:#fff;color:#000}}
@@ -191,10 +190,17 @@ const GN = { M:'남', F:'여', '':'미입력' };
 //  1층  : 위쪽 [화장실][샤워실][로비…][110 … 106][준비실] / 아래쪽 [계단][현관][사감실][101 … 105][계단]
 //  실·화장실·샤워실·준비실·사감실은 벽(테두리)이 있는 칸, 복도·로비·현관·나눔방·외부출입구는 벽 없는 빈 공간, 계단은 도면 기호.
 function stairSvg(wide){
-  let ln = '';
-  for (let k = 1; k < 9; k++){ const p = (k * 100 / 9).toFixed(2); ln += wide ? `<line x1="${p}" y1="0" x2="${p}" y2="100"/>` : `<line x1="0" y1="${p}" x2="100" y2="${p}"/>`; }
-  const rail = wide ? '<rect class="rail" x="6" y="42" width="88" height="16"/>' : '<rect class="rail" x="42" y="6" width="16" height="88"/>';
-  return `<svg class="stairsvg" viewBox="0 0 100 100" preserveAspectRatio="none"><title>계단</title><rect x="0" y="0" width="100" height="100"/>${ln}${rail}</svg>`;
+  // wide(왼쪽 계단): 위아래로 오르내림 — 가로 단 선, 가운데 세로 구분선, 아래쪽이 계단참
+  // 세로로 긴 오른쪽 계단: 좌우로 오르내림 — 세로 단 선, 가운데 가로 구분선, 오른쪽이 계단참
+  let s = '';
+  if (wide){
+    for (let i = 0; i < 7; i++){ const y = (6 + i * 10.5).toFixed(1); s += `<line x1="3" y1="${y}" x2="48" y2="${y}"/><line x1="52" y1="${y}" x2="97" y2="${y}"/>`; }
+    s += '<line x1="50" y1="6" x2="50" y2="69"/>';
+  } else {
+    for (let i = 0; i < 7; i++){ const x = (6 + i * 9.5).toFixed(1); s += `<line x1="${x}" y1="3" x2="${x}" y2="47"/><line x1="${x}" y1="53" x2="${x}" y2="97"/>`; }
+    s += '<line x1="6" y1="50" x2="63" y2="50"/>';
+  }
+  return `<svg class="stairsvg" viewBox="0 0 100 100" preserveAspectRatio="none"><title>계단</title>${s}</svg>`;
 }
 function planHtml(f, cfg, cellFn, opt){
   opt = opt || {};
@@ -212,7 +218,7 @@ function planHtml(f, cfg, cellFn, opt){
   const lift = '<span class="lift">◀ 승강기</span>';
   if (f === 1){
     cell(1, 1, 1, 1, lab('남자 화장실'), 'box M'); cell(2, 1, 1, 1, lab('남자 샤워실'), 'box M');
-    cell(3, 3, 1, 2, lab('로비'), 'open');
+    cell(3, 3, 1, 2, '', 'open');
     for (let j = 0; j < 5; j++) room(110 - j, 6 + j, 1);
     cell(11, 1, 1, 1, lab('준비실'), 'box off');
     cell(1, 2, 2, 1, lift, 'plain');
