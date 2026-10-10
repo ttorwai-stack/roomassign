@@ -98,31 +98,39 @@ td input[type=text]{width:100%}
 .bigchk{display:flex;padding:10px 0;font-size:16px;border-bottom:1px solid var(--line)}
 .okmark{width:48px;height:48px;border-radius:50%;background:var(--ok-bg);color:var(--ok);display:flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:6px}
 /* 배치도 */
-.plan{--cw:86px;--ch:128px;overflow-x:auto;padding-bottom:4px}
-.plan.sm{--cw:24px;--ch:52px}.plan.sm .pgrid{gap:2px;grid-template-rows:var(--ch) 22px var(--ch)}
-.pgrid{display:grid;grid-template-columns:repeat(11,var(--cw));grid-template-rows:var(--ch) 30px var(--ch);gap:3px;width:max-content}
-.pfix{border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--sub);font-size:12px;padding:4px 6px;display:flex;align-items:flex-start;justify-content:flex-start;overflow:hidden}
+.plan{--wall:#6b7580;--gray:#dfe3e8;--yellow:#fff1a8;--cw:86px;--ch:128px;overflow-x:auto;padding:2px 2px 4px}
+@media (prefers-color-scheme:dark){.plan{--wall:#9aa5b1;--gray:#2c3540;--yellow:#4d4519}}
+.plan.sm{--cw:24px;--ch:52px}
+.pgrid{display:grid;grid-template-columns:repeat(11,var(--cw));grid-template-rows:var(--ch) 30px var(--ch);gap:0;width:max-content}
+.pfix{min-width:0;overflow:hidden;font-size:12px;color:var(--sub);display:flex;align-items:flex-start;justify-content:flex-start;padding:4px 5px}
 .pfix .plabel{font-weight:600}
-.pfix.M{background:var(--m-bg);color:var(--m)}.pfix.F{background:var(--f-bg);color:var(--f)}
-.pfix.stairs{background:repeating-linear-gradient(0deg,var(--card) 0 8px,var(--line) 8px 9px)}
-.pfix.stairs .plabel{background:var(--card);padding:0 5px;border-radius:4px;color:var(--ink)}
-.pfix.lobby{background:var(--pri-bg);color:var(--pri);font-size:15px}.pfix.entr{border-top-left-radius:6px}
-.pfix.conn{border-bottom:2px dashed var(--sub);margin-bottom:-3px;border-bottom-left-radius:0;border-bottom-right-radius:0}
-.pfix.corr{border:0;border-top:1px dashed var(--line);border-bottom:1px dashed var(--line);border-radius:0;background:transparent;align-items:center;justify-content:space-between;padding:0 8px}
-.pfix.corr .plabel{width:100%;display:flex;justify-content:space-between;font-weight:400}
-.pfix.corr .lift{font-style:italic}
-.pfix.blockoff,.pfix.blank{background-image:repeating-linear-gradient(135deg,transparent 0 7px,rgba(128,128,128,.3) 7px 8px)}
-.room{border:1px solid var(--line);border-radius:8px;padding:4px 5px;background:var(--card);overflow:hidden;min-width:0}
-.room.over{outline:2px solid var(--pri)}
-.room.off{background-image:repeating-linear-gradient(135deg,transparent 0 7px,rgba(128,128,128,.3) 7px 8px)}
+.pfix.box{border:1px solid var(--wall);margin:0 -1px -1px 0;background:var(--card);color:var(--ink)}
+.pfix.box.M{background:var(--m-bg)}.pfix.box.F{background:var(--f-bg)}
+.pfix.box.off{background:var(--gray);color:var(--sub)}
+.pfix.box.yellow{background:var(--yellow);color:var(--ink)}
+.pfix.open .plabel{font-weight:400}
+.pfix.open.entr{align-items:flex-end;justify-content:center;font-size:13px}
+.pfix.plain{align-items:center;padding:0 6px}.pfix.plain .lift{font-style:italic;font-size:12px}
+.pfix.stairs{padding:3px}
+.stairsvg{width:100%;height:100%;display:block}
+.stairsvg rect,.stairsvg line{fill:none;stroke:var(--wall);stroke-width:1;vector-effect:non-scaling-stroke}
+.stairsvg rect.rail{fill:var(--card)}
+.room{border:1px solid var(--wall);margin:0 -1px -1px 0;padding:3px 4px;background:var(--card);overflow:hidden;min-width:0}
+.room.over{outline:2px solid var(--pri);outline-offset:-2px}
+.room.off{background:var(--gray)}
 .room.gM{background-color:var(--m-bg)}.room.gF{background-color:var(--f-bg)}
-.room.warn{border-color:var(--bad)}
+.room.warn{outline:2px solid var(--bad);outline-offset:-2px}
 .room.ondol .roomno::after{content:" 온돌";font-size:10px;color:var(--sub);font-weight:400}
-.room.mine{outline:3px solid var(--pri);background-color:var(--pri-bg)}
-.room.dim{opacity:.6}
+.room.mine{outline:3px solid var(--pri);outline-offset:-3px;background-color:var(--pri-bg)}
+.room.dim{opacity:.55}
 .roomno{font-weight:700;font-size:13px}
 .room .cnt{float:right;font-size:11px;color:var(--sub)}
-.plan.sm .pfix{font-size:7px;padding:1px;line-height:1.1}.plan.sm .plabel{font-weight:400;word-break:keep-all}.plan.sm .room{padding:1px;text-align:center}.plan.sm .roomno{font-size:9px;white-space:nowrap}.plan.sm .pfix.corr .plabel{font-size:7px}.plan.sm .room.ondol .roomno::after{content:""}
+.room .tag{display:flex;width:100%;border-radius:3px;margin:2px 0 0;padding:1px 5px;font-size:12px;cursor:grab}
+.room .tag small{display:none}
+.pool .tag{margin:2px;padding:3px 8px;font-size:13px}
+.plan.sm .pfix{font-size:7px;padding:1px;line-height:1.1}.plan.sm .plabel{font-weight:400;word-break:keep-all}.plan.sm .room{padding:1px;text-align:center}.plan.sm .roomno{font-size:9px;white-space:nowrap}.plan.sm .room.ondol .roomno::after{content:""}.plan.sm .pfix.plain .lift{font-size:7px}.plan.sm .pfix.stairs{padding:1px}
+.savebar{position:sticky;top:58px;z-index:15;display:flex;gap:10px;align-items:center;padding:8px 12px}
+.savebar.dirty{border-color:var(--warn);background:var(--warn-bg)}
 @media print{header,.noprint,.tabs{display:none!important}.card{border:0}body{background:#fff;color:#000}}
 </style>
 </head>
@@ -181,37 +189,45 @@ const GN = { M:'남', F:'여', '':'미입력' };
 // 숙소 배치도(숙소배치도.pdf 기준). 11칸 격자: 위쪽 줄(1) · 복도(2) · 아래쪽 줄(3)
 //  2~4층: 위쪽 [화장실][샤워실][나눔방/외부출입구][x15 … x09][준비실] / 아래쪽 [계단][x01 … x08][계단]
 //  1층  : 위쪽 [화장실][샤워실][로비…][110 … 106][준비실] / 아래쪽 [계단][현관][사감실][101 … 105][계단]
-//  승강기는 배치도 밖(왼쪽 벽 뒤)에 있어 복도 왼쪽 끝에 표시만 한다. 모든 실은 같은 크기, 이름·호수는 칸 위쪽에 쓴다.
+//  실·화장실·샤워실·준비실·사감실은 벽(테두리)이 있는 칸, 복도·로비·현관·나눔방·외부출입구는 벽 없는 빈 공간, 계단은 도면 기호.
+function stairSvg(wide){
+  let ln = '';
+  for (let k = 1; k < 9; k++){ const p = (k * 100 / 9).toFixed(2); ln += wide ? `<line x1="${p}" y1="0" x2="${p}" y2="100"/>` : `<line x1="0" y1="${p}" x2="100" y2="${p}"/>`; }
+  const rail = wide ? '<rect class="rail" x="6" y="42" width="88" height="16"/>' : '<rect class="rail" x="42" y="6" width="16" height="88"/>';
+  return `<svg class="stairsvg" viewBox="0 0 100 100" preserveAspectRatio="none"><title>계단</title><rect x="0" y="0" width="100" height="100"/>${ln}${rail}</svg>`;
+}
 function planHtml(f, cfg, cellFn, opt){
   opt = opt || {};
   const byId = {}; cfg.rooms.forEach(r => byId[r.id] = r);
   const g = (f === 1 || f === 3) ? 'M' : 'F', gn = g === 'M' ? '남자' : '여자';
   const out = [], used = new Set();
-  const fix = (col, span, row, rspan, label, cls) => out.push(`<div class="pfix ${cls || ''}" style="grid-column:${col}/span ${span};grid-row:${row}/span ${rspan}"><span class="plabel">${label}</span></div>`);
+  const cell = (col, span, row, rspan, inner, cls) => out.push(`<div class="pfix ${cls || ''}" style="grid-column:${col}/span ${span};grid-row:${row}/span ${rspan}">${inner}</div>`);
+  const lab = t => `<span class="plabel">${t}</span>`;
   const room = (id, col, row) => {
     id = String(id); used.add(id);
     const r = byId[id];
     out.push(r ? cellFn(r).replace('<div class="room', `<div style="grid-column:${col};grid-row:${row}" class="room`)
-               : `<div class="pfix blank" style="grid-column:${col};grid-row:${row}"><span class="plabel">${id}호</span></div>`);
+               : `<div class="pfix box off" style="grid-column:${col};grid-row:${row}">${lab(id + '호')}</div>`);
   };
+  const lift = '<span class="lift">◀ 승강기</span>';
   if (f === 1){
-    fix(1, 1, 1, 1, '남자 화장실', 'M'); fix(2, 1, 1, 1, '남자 샤워실', 'M');
-    fix(3, 3, 1, 2, '로비', 'lobby');
+    cell(1, 1, 1, 1, lab('남자 화장실'), 'box M'); cell(2, 1, 1, 1, lab('남자 샤워실'), 'box M');
+    cell(3, 3, 1, 2, lab('로비'), 'open');
     for (let j = 0; j < 5; j++) room(110 - j, 6 + j, 1);
-    fix(11, 1, 1, 1, '준비실');
-    fix(1, 2, 2, 1, '<span class="lift">◀ 승강기(왼쪽 벽 뒤)</span>', 'corr'); fix(6, 6, 2, 1, '복도', 'corr');
-    fix(1, 2, 3, 1, '계단', 'stairs'); fix(3, 2, 3, 1, '현관', 'lobby entr'); fix(5, 1, 3, 1, '사감실', 'blockoff');
+    cell(11, 1, 1, 1, lab('준비실'), 'box off');
+    cell(1, 2, 2, 1, lift, 'plain');
+    cell(1, 2, 3, 1, stairSvg(true), 'stairs'); cell(3, 2, 3, 1, lab('▼ 현관'), 'open entr'); cell(5, 1, 3, 1, lab('사감실'), 'box yellow');
     for (let j = 0; j < 5; j++) room(101 + j, 6 + j, 3);
-    fix(11, 1, 3, 1, '계단', 'stairs');
+    cell(11, 1, 3, 1, stairSvg(false), 'stairs');
   } else {
-    fix(1, 1, 1, 1, gn + ' 화장실', g); fix(2, 1, 1, 1, gn + ' 샤워실', g);
-    fix(3, 1, 1, 1, f === 4 ? '외부 출입구' : '이야기 나눔방', 'conn');
+    cell(1, 1, 1, 1, lab(gn + ' 화장실'), 'box ' + g); cell(2, 1, 1, 1, lab(gn + ' 샤워실'), 'box ' + g);
+    cell(3, 1, 1, 2, lab(f === 4 ? '외부 출입구' : '이야기 나눔방'), 'open');
     for (let n = 15; n >= 9; n--) room(f * 100 + n, 4 + (15 - n), 1);
-    fix(11, 1, 1, 1, '준비실');
-    fix(1, 11, 2, 1, '<span class="lift">◀ 승강기(왼쪽 벽 뒤)</span><span>복도</span>', 'corr');
-    fix(1, 2, 3, 1, '계단', 'stairs');
+    cell(11, 1, 1, 1, lab('준비실'), 'box off');
+    cell(1, 2, 2, 1, lift, 'plain');
+    cell(1, 2, 3, 1, stairSvg(true), 'stairs');
     for (let n = 1; n <= 8; n++) room(f * 100 + n, 2 + n, 3);
-    fix(11, 1, 3, 1, '계단', 'stairs');
+    cell(11, 1, 3, 1, stairSvg(false), 'stairs');
   }
   const extra = cfg.rooms.filter(r => r.floor === f && !used.has(r.id));
   extra.forEach((r, i) => out.push(cellFn(r).replace('<div class="room', `<div style="grid-column:${3 + i};grid-row:4" class="room`)));
@@ -500,7 +516,7 @@ const User = (() => {
 
 // ═════════ 관리자 화면 ═════════
 const Admin = (() => {
-  const A = { pw: '', ev: '', events: null, authed: false, st: null, tab: 'people', hasPw: null, onlyBlank: false, q: '', sel: {} };
+  const A = { dirtyCfg: false, pp: {}, pw: '', ev: '', events: null, authed: false, st: null, tab: 'people', hasPw: null, onlyBlank: false, q: '', sel: {} };
   const TABS = [['people','① 명단'],['rooms','② 객실·옵션'],['status','③ 신청 현황'],['assign','④ 배정']];
   const STATUS = { none:'미응답', commute:'출근', mate:'같은 방 요청', stay:'숙박', style:'숙박(유형)' };
   const SHORT = { snore:'코', sensitive:'예', late:'늦', early:'일', quiet:'조' };
@@ -534,6 +550,7 @@ const Admin = (() => {
       <div class="row" style="margin-top:6px"><span class="hint">연수생 주소</span><input type="text" readonly value="${esc(link)}" style="flex:1;min-width:220px" onclick="this.select()"><button class="sm" data-act="copyLink" data-link="${esc(link)}">복사</button></div></div>
       <div class="tabs noprint" style="margin-bottom:10px">${TABS.map(([k,l]) => `<button class="tab ${t===k?'on':''}" data-tab="${k}">${l}</button>`).join('')}
       <button class="tab" id="logout" style="margin-left:auto">로그아웃</button></div>`;
+    h += (t === 'people' || t === 'rooms') ? saveBarHtml() : '';
     h += t === 'people' ? vPeople() : t === 'rooms' ? vRooms() : t === 'status' ? vStatus() : vAssign();
     app.innerHTML = h;
     setCourse(evName);
@@ -593,7 +610,7 @@ const Admin = (() => {
         <td><button class="gbtn ${p.gender||'N'}" data-act="gender">${GN[p.gender]}</button></td>
         <td><input type="text" data-f="org" value="${esc(p.org)}"></td>
         <td><input type="text" data-f="rank" value="${esc(p.rank)}"></td>
-        <td style="white-space:nowrap">${p.claimed?`✔ ***${esc(p.last4)} <button class="sm" data-act="resetPhone" title="등록된 번호 지우기">지우기</button>`:'<input type="text" data-f="phone" inputmode="numeric" placeholder="010-0000-0000" style="width:130px">'}</td>
+        <td style="white-space:nowrap">${p.claimed?`✔ ***${esc(p.last4)} <button class="sm" data-act="resetPhone" title="등록된 번호 지우기">지우기</button>`:`<input type="text" data-f="phone" inputmode="numeric" placeholder="010-0000-0000" value="${esc(p.phonePending || '')}" style="width:130px">`}</td>
         <td><button class="sm bad" data-act="del">삭제</button></td></tr>`).join('')}
       </tbody></table></div></div>`;
   }
@@ -617,7 +634,7 @@ const Admin = (() => {
     const c = A.st.config;
     const floors = [...new Set(c.rooms.map(r => r.floor))].sort((a,b) => b-a);
     const gsel = f => `<select data-fg="${f}">${[['M','남자 층'],['F','여자 층'],['','남녀 혼용']].map(([v,l]) => `<option value="${v}" ${(c.floorGender[f]||'')===v?'selected':''}>${l}</option>`).join('')}</select>`;
-    return `<div class="card"><h2>기본 옵션 <span class="saved" id="savedMsg"></span></h2>
+    return `<div class="card"><h2>기본 옵션</h2>
       <div class="row">
         <label>방당 인원 <select id="per">${[1,2,3,4,5,6].map(n => `<option ${c.perRoom===n?'selected':''}>${n}</option>`).join('')}</select>명</label>
         <label>온돌방 정원 <select id="ond">${[1,2,3,4,5,6,8].map(n => `<option ${c.ondolCap===n?'selected':''}>${n}</option>`).join('')}</select>명</label>
@@ -658,13 +675,32 @@ const Admin = (() => {
   }
   const Assign_cap = (r, c) => r.cap || (r.type === 'ondol' ? c.ondolCap : c.perRoom);
 
-  function saveCfg(){
-    clearTimeout(saveT);
-    const m = $('#savedMsg'); if (m) m.textContent = '저장 중…';
-    saveT = setTimeout(async () => {
-      try { A.st = await call('adm_saveConfig', A.pw, A.ev, A.st.config); const m2 = $('#savedMsg'); if (m2) m2.textContent = '저장됨'; }
-      catch(e){ toast(e.message, true); }
-    }, 500);
+  // ── 저장 버튼 방식: 명단 표·객실/옵션 수정은 [저장]을 눌러야 서버에 반영된다 ──
+  const isDirty = () => A.dirtyCfg || Object.keys(A.pp).length > 0;
+  function saveCfg(){ A.dirtyCfg = true; updateBar(); }
+  function updateBar(){
+    const b = $('#saveBar'); if (!b) return;
+    const d = isDirty(); b.classList.toggle('dirty', d);
+    $('#dirtyMsg').textContent = d ? '저장하지 않은 변경이 있어요' : '변경 사항 없음';
+    $('#saveBtn').disabled = !d;
+  }
+  function saveBarHtml(){
+    const d = isDirty();
+    return `<div class="card savebar noprint ${d?'dirty':''}" id="saveBar"><button class="pri" id="saveBtn" ${d?'':'disabled'}>저장</button><span id="dirtyMsg" class="hint">${d ? '저장하지 않은 변경이 있어요' : '변경 사항 없음'}</span></div>`;
+  }
+  async function saveAll(){
+    try {
+      const cfgLocal = A.dirtyCfg ? A.st.config : null;
+      const ids = Object.keys(A.pp);
+      if (ids.length){ A.st = await call('adm_updatePeople', A.pw, A.ev, ids.map(id => Object.assign({ id }, A.pp[id]))); A.pp = {}; }
+      if (cfgLocal){ A.st.config = cfgLocal; A.st = await call('adm_saveConfig', A.pw, A.ev, A.st.config); A.dirtyCfg = false; }
+      toast('저장했어요'); render();
+    } catch(e){ toast(e.message, true); }
+  }
+  async function guardSave(){
+    if (!isDirty()) return true;
+    if (confirm('저장하지 않은 변경이 있어요. 저장하고 이동할까요?\n(취소를 누르면 그대로 머물러요)')){ await saveAll(); return !isDirty(); }
+    return false;
   }
 
   // ── 신청 현황 ──
@@ -686,7 +722,7 @@ const Admin = (() => {
   function chip(p, extra){
     const k = A.st.choices[p.id] || {}, tr = (k.traits||[]).map(t => SHORT[t] || t[0]).join('');
     const pin = A.st.pins[p.id] ? 'pin' : '';
-    return `<span class="tag ${p.gender} ${pin} ${extra||''}" data-drag="${p.id}" style="margin:2px;padding:3px 8px;font-size:13px" title="${esc(p.org)}${tr?' · '+tr:''}">${esc(p.name)}${tr?`<small>${tr}</small>`:''}</span>`;
+    return `<span class="tag ${p.gender} ${pin} ${extra||''}" data-drag="${p.id}" title="${esc(p.org)}${tr?' · '+tr:''}">${esc(p.name)}${tr?`<small>${tr}</small>`:''}</span>`;
   }
   function vAssign(){
     const st = A.st, c = st.config, byId = pById();
@@ -722,6 +758,7 @@ const Admin = (() => {
 
   // ── 이벤트 ──
   async function act(fn, ...args){
+    if (isDirty()) await saveAll();
     try { const r = await call(fn, A.pw, A.ev, ...args); if (r && r.config){ A.st = r; render(); } return r; }
     catch(e){ toast(e.message, true); render(); }
   }
@@ -739,11 +776,13 @@ const Admin = (() => {
   document.addEventListener('click', async e => {
     if (mode !== 'admin') return;
     const t = e.target;
+    if ((t.id === 'logout' || t.id === 'toEvents' || t.dataset.tab) && !(await guardSave())) return;
     if (t.id === 'logout'){ ls.del('ra_adm'); A.st = null; A.pw = ''; A.ev = ''; A.authed = false; A.events = null; render(); return; }
+    if (t.id === 'saveBtn'){ await saveAll(); return; }
     if (t.id === 'toEvents'){ A.ev = ''; A.st = null; A.tab = 'people'; try { A.events = await call('adm_events', A.pw); } catch(er){ toast(er.message, true); } render(); return; }
     const eRow = t.closest('[data-eid]'), eid = eRow && eRow.dataset.eid;
     if (t.dataset.act === 'copyLink'){ try { await navigator.clipboard.writeText(t.dataset.link); toast('주소를 복사했어요'); } catch(er){ prompt('아래 주소를 복사하세요', t.dataset.link); } return; }
-    if (t.dataset.act === 'openEv'){ A.ev = eid; A.st = null; A.tab = 'people'; render(); return; }
+    if (t.dataset.act === 'openEv'){ A.ev = eid; A.st = null; A.tab = 'people'; A.pp = {}; A.dirtyCfg = false; render(); return; }
     if (t.dataset.act === 'createEv'){
       const name = $('#newName').value.trim(); if (!name){ toast('연수 이름을 입력해 주세요', true); return; }
       try { const r = await call('adm_createEvent', A.pw, name, $('#copyFrom').value); A.events = r.events; toast('연수를 만들었어요'); render(); } catch(er){ toast(er.message, true); }
@@ -777,7 +816,7 @@ const Admin = (() => {
         if (!gs.length){ toast('붙여넣은 내용이 없어요', true); return; }
         if (gs.length !== ids.length && !confirm(`성별 ${gs.length}개, 표시된 명단 ${ids.length}명으로 개수가 달라요. 앞에서부터 적용할까요?`)) return;
         await act('adm_setGenders', ids, gs); toast('적용됨'); break; }
-      case 'gender': { const p = P().find(x => x.id === pid), nx = p.gender === 'M' ? 'F' : p.gender === 'F' ? '' : 'M'; p.gender = nx; render(); call('adm_updatePerson', A.pw, A.ev, pid, { gender: nx }).catch(er => toast(er.message, true)); break; }
+      case 'gender': { const p = P().find(x => x.id === pid), nx = p.gender === 'M' ? 'F' : p.gender === 'F' ? '' : 'M'; p.gender = nx; (A.pp[pid] = A.pp[pid] || {}).gender = nx; render(); break; }
       case 'del': { const p = P().find(x => x.id === pid); if (confirm(p.name + ' 님을 명단에서 삭제할까요?')) await act('adm_deletePeople', [pid]); break; }
       case 'resetPhone': if (confirm('전화번호 등록을 해제할까요? (본인이 다시 등록해야 해요)')) await act('adm_resetPhone', pid); break;
       case 'ondolAll': { A.st.config.rooms.forEach(r => { if (r.type === 'ondol') r.use = t.dataset.v === '1'; }); render(); saveCfg(); break; }
@@ -810,12 +849,12 @@ const Admin = (() => {
       else if (t.hasAttribute('data-ou')) o.use = t.checked;
       saveCfg(); return;
     }
-    if (t.dataset.f === 'phone' && pid){
-      try { const r = await call('adm_updatePerson', A.pw, A.ev, pid, { phone: t.value }); const p = P().find(x => x.id === pid); p.claimed = !!r.last4; p.last4 = r.last4 || ''; toast('번호 저장됨'); render(); }
-      catch(er){ toast(er.message, true); t.value = ''; }
-      return; }
-    if (t.dataset.f && pid){ const p = P().find(x => x.id === pid); const v = t.value.trim(); if (t.dataset.f === 'name' && !v){ t.value = p.name; return; } p[t.dataset.f] = v;
-      call('adm_updatePerson', A.pw, A.ev, pid, { [t.dataset.f]: v }).then(() => toast('저장됨')).catch(er => toast(er.message, true)); return; }
+    if (t.dataset.f && pid){
+      const p = P().find(x => x.id === pid), v = t.value.trim();
+      if (t.dataset.f === 'name' && !v){ t.value = p.name; return; }
+      if (t.dataset.f === 'phone'){ p.phonePending = v; } else p[t.dataset.f] = v;
+      (A.pp[pid] = A.pp[pid] || {})[t.dataset.f] = v; updateBar(); return;
+    }
     if (t.dataset.act === 'setStatus'){ const old = A.st.choices[pid] || {}; await act('adm_setChoice', pid, { status: t.value, mates: old.mates, traits: old.traits, sameWish: old.sameWish, note: old.note }); return; }
     if (t.id === 'per') c.perRoom = Number(t.value);
     else if (t.id === 'ond') c.ondolCap = Number(t.value);
