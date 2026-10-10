@@ -119,6 +119,7 @@ td input[type=text]{width:100%}
 .room.mine{outline:3px solid var(--pri);background:var(--pri-bg)}
 .room.dim{opacity:.55}
 .roomno{font-weight:700;font-size:13px}
+.optrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid var(--line)}
 @media print{header,.noprint,.tabs{display:none!important}.card{border:0}body{background:#fff;color:#000}}
 </style>
 </head>
@@ -163,6 +164,15 @@ function setCourse(name){
   const t = (name ? name + ' ' : '') + '숙소 배정';
   $('#ttl').textContent = t; document.title = '율곡연수원 ' + t;
 }
+const DEFAULT_OPTIONS = [
+  { id:'commute', title:'출근', desc:'집에서 출퇴근해요', kind:'commute', traits:[], use:true },
+  { id:'stay', title:'숙박', desc:'특별히 원하는 분은 없어요', kind:'stay', traits:[], use:true },
+  { id:'pick', title:'숙박 · 같은 방 쓸 분이 정해져 있어요', desc:'같은 방을 쓸 분을 선택합니다', kind:'pick', traits:[], use:true },
+  { id:'snore', title:'숙박 · 코골이가 심해요', desc:'같은 스타일의 분과 같은 방을 원해요', kind:'style', traits:['snore'], use:true },
+  { id:'sensitive', title:'숙박 · 예민해서 조용히 쓰고 싶어요', desc:'같은 스타일의 분과 같은 방을 원해요', kind:'style', traits:['sensitive','quiet'], use:true },
+  { id:'late', title:'숙박 · 늦게 들어올 수 있어요', desc:'같은 스타일의 분과 같은 방을 원해요', kind:'style', traits:['late'], use:true },
+  { id:'early', title:'숙박 · 일찍 자고 일찍 일어나요', desc:'같은 스타일의 분과 같은 방을 원해요', kind:'style', traits:['early'], use:true }
+];
 const GN = { M:'남', F:'여', '':'미입력' };
 
 // 숙소 배치도(숙소배치도.hwpx 구조): 2~4층은 위쪽 15~09호, 아래쪽 01~08호 / 1층은 위쪽 110~106호, 아래쪽 101~105호
@@ -260,16 +270,9 @@ const User = (() => {
   const tshort = id => { const t = U.boot.traits.find(x => x.id === id); return t ? (t.short || t.label) : id; };
   const badges = ids => (ids || []).map(t => `<span class="badge st">${esc(tshort(t))}</span>`).join('');
 
-  // 선택지: 한 화면에 모두 보이는 대표 유형
-  const OPTS = [
-    { k:'commute',   t:'① 출근',                               d:'집에서 출퇴근해요' },
-    { k:'stay',      t:'② 숙박',                               d:'특별히 원하는 분은 없어요' },
-    { k:'pick',      t:'③ 숙박 · 같은 방 쓸 분이 정해져 있어요', d:'같은 방을 쓸 분을 선택합니다' },
-    { k:'snore',     t:'④ 숙박 · 코골이가 심해요',              d:'같은 스타일의 분과 같은 방을 원해요', traits:['snore'] },
-    { k:'sensitive', t:'⑤ 숙박 · 예민해서 조용히 쓰고 싶어요',   d:'같은 스타일의 분과 같은 방을 원해요', traits:['sensitive','quiet'] },
-    { k:'late',      t:'⑥ 숙박 · 늦게 들어올 수 있어요',        d:'같은 스타일의 분과 같은 방을 원해요', traits:['late'] },
-    { k:'early',     t:'⑦ 숙박 · 일찍 자고 일찍 일어나요',      d:'같은 스타일의 분과 같은 방을 원해요', traits:['early'] }
-  ];
+  // 선택지는 관리자가 연수별로 정한다(U.boot.options)
+  const opts = () => (U.boot && U.boot.options) || [];
+  const CIRC = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳';
 
   async function init(){
     if (!EV){ U.boot = { noEvent: true }; render(); return; }
@@ -328,20 +331,21 @@ const User = (() => {
   // 3단계: 선택 (대표 유형이 모두 보임)
   function chooseView(){
     const cur = curKey();
-    const z = o => `<button class="zone zbtn ${cur===o.k?'on':''}" data-act="zone" data-z="${o.k}" data-drop="${o.k}"><b>${o.t}</b><span>${o.d}</span></button>`;
+    const z = (o, i) => `<button class="zone zbtn ${cur===o.id?'on':''}" data-act="zone" data-z="${o.id}" data-drop="${o.id}"><b>${CIRC[i] || (i+1)+'.'} ${esc(o.title)}</b>${o.desc ? `<span>${esc(o.desc)}</span>` : ''}</button>`;
     return `<div class="card big-card"><h2>${esc(U.view.me.name)}님, 해당하는 것을 선택해 주세요</h2>
       <p class="hint">내 이름표를 칸으로 끌어다 놓거나, 칸을 눌러 선택하세요. 스타일은 자동 배정에만 쓰이고 다른 연수생에게는 보이지 않아요.</p>
       <div class="tagbox">${myTag()}</div>
-      <div class="zlist">${OPTS.map(z).join('')}</div>
+      <div class="zlist">${opts().map(z).join('')}</div>
       ${U.edit ? '<button class="sm link" data-act="cancelEdit">취소</button>' : ''}</div>`;
   }
   // 현재 선택을 OPTS 키로 환산
   function curKey(){
-    const c = U.view.choice; if (c.status === 'none') return '';
-    if (c.status === 'commute') return 'commute';
-    const hit = OPTS.find(o => o.traits && o.traits.length === c.traits.length && o.traits.every(t => c.traits.includes(t)));
-    if (hit) return hit.k;
-    return c.mates.length ? 'pick' : 'stay';
+    const c = U.view.choice, os = opts(); if (c.status === 'none') return '';
+    const pickKind = k => (os.find(o => o.kind === k) || {}).id || '';
+    if (c.status === 'commute') return pickKind('commute');
+    const hit = os.find(o => o.kind === 'style' && o.traits.length === c.traits.length && o.traits.every(t => c.traits.includes(t)));
+    if (hit) return hit.id;
+    return pickKind(c.mates.length ? 'pick' : 'stay');
   }
 
   // 4단계: 같은 방 원하는 분 고르기 (상대의 스타일이 보임)
@@ -432,13 +436,12 @@ const User = (() => {
   }
   async function choose(k){
     if (!U.view) return;
-    const o = OPTS.find(x => x.k === k); if (!o) return;
+    const o = opts().find(x => x.id === k); if (!o) return;
     const keep = U.view.choice;
     U.edit = false; U.filter = ''; U.cq = '';
-    if (k === 'commute'){ U.step = null; return submit({ status:'commute', mates:[], traits:[], sameWish:false, note:'' }); }
-    if (k === 'stay'){ U.step = null; return submit({ status:'stay', mates:keep.mates, traits:[], sameWish:false, note:'' }); }
-    if (k === 'custom'){ U.step = 'custom'; return submit({ status:'stay', mates:keep.mates, traits:keep.traits, sameWish:keep.sameWish, note:keep.note }); }
-    if (k === 'pick'){ U.step = 'cand'; return submit({ status:'stay', mates:keep.mates, traits:[], sameWish:false, note:'' }); }
+    if (o.kind === 'commute'){ U.step = null; return submit({ status:'commute', mates:[], traits:[], sameWish:false, note:'' }); }
+    if (o.kind === 'stay'){ U.step = null; return submit({ status:'stay', mates:keep.mates, traits:[], sameWish:false, note:'' }); }
+    if (o.kind === 'pick'){ U.step = 'cand'; return submit({ status:'stay', mates:keep.mates, traits:[], sameWish:false, note:'' }); }
     U.step = 'cand';
     return submit({ status:'stay', mates:keep.mates, traits:o.traits, sameWish:true, note:'' });
   }
@@ -449,7 +452,7 @@ const User = (() => {
     if (mates.length >= U.boot.maxMates){ toast('같은 방 희망은 최대 ' + U.boot.maxMates + '명까지예요', true); return; }
     await submit({ mates: mates.concat(id) });
   }
-  async function drop(id, target){ if (U.view && U.view.me.id === id && OPTS.some(o => o.k === target)) await choose(target); }
+  async function drop(id, target){ if (U.view && U.view.me.id === id && opts().some(o => o.id === target)) await choose(target); }
 
   document.addEventListener('click', async e => {
     if (mode !== 'user') return;
@@ -600,6 +603,7 @@ const Admin = (() => {
       <div class="row" style="margin-top:6px">미응답자:
         <label class="chk"><input type="radio" name="und" value="exclude" ${c.undecided!=='stay'?'checked':''}>배정에서 제외</label>
         <label class="chk"><input type="radio" name="und" value="stay" ${c.undecided==='stay'?'checked':''}>숙박으로 보고 배정</label></div></div>
+    ${vOptions()}
     <div class="card"><h2>층별 설정</h2><p class="hint">'채움 순서'가 작은 층부터 방을 채워요(같은 성별 층끼리 비교). 예: 남자 1·3층 → 1층 먼저.</p>
       <table><thead><tr><th>층</th><th>성별</th><th>채움 순서</th><th>사용 방 / 전체</th></tr></thead><tbody>
       ${floors.map(f => { const rs = c.rooms.filter(r => r.floor === f); return `<tr><td><b>${f}층</b></td><td>${gsel(f)}</td>
@@ -611,6 +615,23 @@ const Admin = (() => {
         <label class="chk"><input type="checkbox" data-ru ${r.use?'checked':''}><b>${r.id}호</b></label>${r.type==='ondol'?'<span class="badge">온돌</span>':''}
         <div class="row" style="margin-top:4px">정원 <input type="number" min="1" max="8" style="width:56px" data-rc value="${r.cap||''}" placeholder="${Assign_cap(r,c)}"></div>
         ${r.note?`<div class="hint">${esc(r.note)}</div>`:''}</div>`).join('')}</div></div>`).join('')}</div>`;
+  }
+  const KINDS = [['commute','출근 (방 필요 없음)'],['stay','숙박'],['pick','숙박 + 같은 방 지정 화면'],['style','숙박 + 자동 배정 유형']];
+  const CIRC_A = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳';
+  function vOptions(){
+    const c = A.st.config, os = c.options || [];
+    return `<div class="card"><h2>연수생 선택 화면의 선택지</h2>
+      <p class="hint">연수생이 이름표를 놓는 칸의 <b>제목과 설명</b>을 바꾸고, 쓰지 않을 선택지는 끄거나 지우고, 순서를 바꿀 수 있어요. 종류에 따라 이후 동작이 달라져요 —
+      <b>출근</b>: 방 배정 제외 · <b>숙박</b>: 바로 완료 · <b>숙박 + 같은 방 지정</b>: 같은 방 쓸 분을 이름으로 고르는 화면으로 이동 · <b>숙박 + 자동 배정 유형</b>: 고른 유형(코골이 등)으로 자동 배정에 반영되고 같은 방 지정 화면으로 이동.
+      선택지에 쓴 번호(①②…)는 순서대로 자동으로 붙어요.</p>
+      ${os.map((o,i) => `<div class="optrow" data-oi="${i}">
+        <label class="chk"><input type="checkbox" data-ou ${o.use?'checked':''}>사용</label><b>${CIRC_A[i] || (i+1)+'.'}</b>
+        <input type="text" data-ot value="${esc(o.title)}" placeholder="제목" maxlength="40" style="flex:2;min-width:160px">
+        <input type="text" data-od value="${esc(o.desc)}" placeholder="설명 (선택)" maxlength="80" style="flex:3;min-width:180px">
+        <select data-ok>${KINDS.map(([v,l]) => `<option value="${v}" ${o.kind===v?'selected':''}>${l}</option>`).join('')}</select>
+        ${o.kind === 'style' ? `<span>${c.traits.map(t => `<label class="chk"><input type="checkbox" data-tid="${t.id}" ${o.traits.includes(t.id)?'checked':''}>${esc(t.short || t.label)}</label>`).join('')}</span>` : ''}
+        <button class="sm" data-act="optUp" ${i===0?'disabled':''}>↑</button><button class="sm" data-act="optDown" ${i===os.length-1?'disabled':''}>↓</button><button class="sm bad" data-act="optDel">삭제</button></div>`).join('')}
+      <div class="row" style="margin-top:8px"><button class="sm" data-act="optAdd">+ 선택지 추가</button><button class="sm" data-act="optReset">기본 선택지로 되돌리기</button></div></div>`;
   }
   const Assign_cap = (r, c) => r.cap || (r.type === 'ondol' ? c.ondolCap : c.perRoom);
 
@@ -710,6 +731,12 @@ const Admin = (() => {
     if (!A.st) return;
     const row = t.closest('[data-pid]'), pid = row && row.dataset.pid;
     switch (t.dataset.act || t.id){
+      case 'optAdd': { A.st.config.options.push({ id: 'o' + Date.now().toString(36), title: '새 선택지', desc: '', kind: 'stay', traits: [], use: true }); render(); saveCfg(); break; }
+      case 'optUp': case 'optDown': {
+        const i = Number(t.closest('[data-oi]').dataset.oi), os = A.st.config.options, j = (t.dataset.act === 'optUp') ? i - 1 : i + 1;
+        if (j >= 0 && j < os.length){ [os[i], os[j]] = [os[j], os[i]]; render(); saveCfg(); } break; }
+      case 'optDel': { const i = Number(t.closest('[data-oi]').dataset.oi), os = A.st.config.options; if (os.length > 1 && confirm('이 선택지를 지울까요?')){ os.splice(i, 1); render(); saveCfg(); } break; }
+      case 'optReset': { if (confirm('선택지를 기본값으로 되돌릴까요? (직접 수정한 내용이 사라져요)')){ A.st.config.options = JSON.parse(JSON.stringify(DEFAULT_OPTIONS)); render(); saveCfg(); } break; }
       case 'tpl': {
         const ws = XLSX.utils.aoa_to_sheet([['성명','성별','소속','직급','전화번호'],['홍길동','남','○○교육지원청','지방교육행정주사','010-0000-0000'],['김하나','여','','','']]);
         ws['!cols'] = [{wch:12},{wch:6},{wch:26},{wch:18},{wch:16}];
@@ -751,6 +778,15 @@ const Admin = (() => {
   document.addEventListener('change', async e => {
     if (mode !== 'admin' || !A.st) return;
     const t = e.target, row = t.closest('[data-pid]'), pid = row && row.dataset.pid, c = A.st.config;
+    if (t.closest('[data-oi]')){
+      const box = t.closest('[data-oi]'), o = c.options[Number(box.dataset.oi)];
+      if (t.hasAttribute('data-ot')) o.title = t.value;
+      else if (t.hasAttribute('data-od')) o.desc = t.value;
+      else if (t.hasAttribute('data-ok')){ o.kind = t.value; if (o.kind !== 'style') o.traits = []; render(); }
+      else if (t.hasAttribute('data-tid')) o.traits = [...box.querySelectorAll('[data-tid]:checked')].map(x => x.dataset.tid);
+      else if (t.hasAttribute('data-ou')) o.use = t.checked;
+      saveCfg(); return;
+    }
     if (t.dataset.f === 'phone' && pid){
       try { const r = await call('adm_updatePerson', A.pw, A.ev, pid, { phone: t.value }); const p = P().find(x => x.id === pid); p.claimed = !!r.last4; p.last4 = r.last4 || ''; toast('번호 저장됨'); render(); }
       catch(er){ toast(er.message, true); t.value = ''; }
