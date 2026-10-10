@@ -351,12 +351,22 @@ const User = (() => {
     if (!v){ app.innerHTML = loginView(); bind(); return; }
     let h = '';
     if (v.published){ app.innerHTML = roomCard(v); bind(); return; }
+    if (v.closed){
+      const dt = esc((v.deadline || '').replace('T', ' '));
+      const b = `<div class="banner bad" style="margin:0 0 10px"><b>신청이 마감되었어요</b> <span style="font-size:13px">(마감 ${dt}) · 이후 배정은 연수 담당자가 진행하고, 확정되면 이 화면에서 방을 볼 수 있어요.</span></div>`;
+      let body;
+      if (!v.me.gender) body = `<div class="card big-card"><h2>${esc(v.me.name)}님</h2><p>성별 입력 없이 마감되었어요. 연수 담당자에게 문의해 주세요.</p></div>`;
+      else if (status() === 'none') body = `<div class="card big-card"><h2>${esc(v.me.name)}님</h2><p>선택 없이 마감되었어요. 방 배정은 연수 담당자가 진행합니다.</p><button class="sm link" id="switch">다른 번호로 들어가기</button></div>`;
+      else body = doneView(true);
+      app.innerHTML = b + body; bind(); return;
+    }
+    const dlBanner = v.deadline ? `<div class="banner wait" style="margin:0 0 10px;font-size:13px">신청 마감: <b>${esc(v.deadline.replace('T', ' '))}</b> · 마감 후에는 선택을 바꿀 수 없어요</div>` : '';
     if (!v.me.gender) h = steps(2) + genderView();
     else if (U.edit || status() === 'none') h = steps(3) + chooseView();
     else if (U.step === 'custom') h = steps(3) + styleView();
     else if (U.step === 'cand') h = steps(3) + candView();
     else h = steps(4) + doneView();
-    app.innerHTML = h; bind();
+    app.innerHTML = dlBanner + h; bind();
   }
 
   function loginView(){
@@ -432,7 +442,7 @@ const User = (() => {
   }
 
   // 5단계: 접수 완료
-  function doneView(){
+  function doneView(locked){
     const v = U.view, c = v.choice, byId = {}; v.candidates.forEach(x => byId[x.id] = x);
     const stay = c.status !== 'commute';
     let extra = '';
@@ -446,7 +456,7 @@ const User = (() => {
       <p style="font-size:18px;margin:4px 0"><b>${title}</b></p>${extra}
       ${inc.length ? '<div class="banner ok" style="margin-top:8px">나를 같은 방으로 선택한 분이 있어요. 수락하려면 [같은 방 고르기]를 눌러 주세요.</div>' : ''}
       <p class="hint" style="margin-top:10px">방 배정이 확정되면 같은 주소에서 같은 번호로 들어와 내 방을 확인할 수 있어요.</p>
-      <div class="row2"><button class="bigbtn" data-act="edit">선택 바꾸기</button>${stay ? '<button class="bigbtn" data-act="remate">같은 방 고르기</button>' : ''}</div>
+      ${locked ? '' : `<div class="row2"><button class="bigbtn" data-act="edit">선택 바꾸기</button>${stay ? '<button class="bigbtn" data-act="remate">같은 방 고르기</button>' : ''}</div>`}
       <button class="sm link" id="switch">다른 번호로 들어가기</button></div>`;
   }
 
@@ -641,6 +651,9 @@ const Admin = (() => {
     const floors = [...new Set(c.rooms.map(r => r.floor))].sort((a,b) => b-a);
     const gsel = f => `<select data-fg="${f}">${[['M','남자 층'],['F','여자 층'],['','남녀 혼용']].map(([v,l]) => `<option value="${v}" ${(c.floorGender[f]||'')===v?'selected':''}>${l}</option>`).join('')}</select>`;
     return `<div class="card"><h2>기본 옵션</h2>
+      <div class="row" style="margin-bottom:8px"><label>신청 마감 <input type="datetime-local" id="dl" value="${esc(c.deadline || '')}"></label>
+        <button class="sm" data-act="dlClear">마감 없음</button>
+        <span class="hint">마감 시각(한국시간) 이후에는 연수생이 선택·성별을 바꿀 수 없어요. 관리자는 마감 후에도 자유롭게 배정할 수 있어요.</span></div>
       <div class="row">
         <label>방당 인원 <select id="per">${[1,2,3,4,5,6].map(n => `<option ${c.perRoom===n?'selected':''}>${n}</option>`).join('')}</select>명</label>
         <label>온돌방 정원 <select id="ond">${[1,2,3,4,5,6,8].map(n => `<option ${c.ondolCap===n?'selected':''}>${n}</option>`).join('')}</select>명</label>
@@ -799,6 +812,7 @@ const Admin = (() => {
     if (!A.st) return;
     const row = t.closest('[data-pid]'), pid = row && row.dataset.pid;
     switch (t.dataset.act || t.id){
+      case 'dlClear': { A.st.config.deadline = ''; render(); saveCfg(); break; }
       case 'optAdd': { A.st.config.options.push({ id: 'o' + Date.now().toString(36), title: '새 선택지', desc: '', kind: 'stay', traits: [], use: true }); render(); saveCfg(); break; }
       case 'optUp': case 'optDown': {
         const i = Number(t.closest('[data-oi]').dataset.oi), os = A.st.config.options, j = (t.dataset.act === 'optUp') ? i - 1 : i + 1;
@@ -862,7 +876,8 @@ const Admin = (() => {
       (A.pp[pid] = A.pp[pid] || {})[t.dataset.f] = v; updateBar(); return;
     }
     if (t.dataset.act === 'setStatus'){ const old = A.st.choices[pid] || {}; await act('adm_setChoice', pid, { status: t.value, mates: old.mates, traits: old.traits, sameWish: old.sameWish, note: old.note }); return; }
-    if (t.id === 'per') c.perRoom = Number(t.value);
+    if (t.id === 'dl') c.deadline = t.value;
+    else if (t.id === 'per') c.perRoom = Number(t.value);
     else if (t.id === 'ond') c.ondolCap = Number(t.value);
     else if (t.id === 'bal') c.balance = t.checked;
     else if (t.id === 'cross') c.allowCross = t.checked;
