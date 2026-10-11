@@ -72,6 +72,12 @@ td input[type=text]{width:100%}
 .floor h3{margin:0 0 6px;font-size:14px}
 .pool{min-height:54px;border:2px dashed var(--line);border-radius:10px;padding:4px}
 .pool.over{border-color:var(--pri);background:var(--pri-bg)}
+#loading{position:fixed;left:50%;top:76px;transform:translateX(-50%);z-index:250;display:none;align-items:center;gap:10px;background:#1d2733;color:#fff;padding:11px 18px;border-radius:999px;font-size:15px;box-shadow:0 6px 20px rgba(0,0,0,.3);max-width:92vw}
+#loading.on{display:flex}
+.spin{display:inline-block;width:18px;height:18px;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:sp .8s linear infinite;flex:0 0 auto}
+.spin.dark{border-color:rgba(0,0,0,.15);border-top-color:var(--pri)}
+@keyframes sp{to{transform:rotate(360deg)}}
+body.isbusy button,body.isbusy .zbtn{pointer-events:none}
 #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#1d2733;color:#fff;padding:10px 16px;border-radius:10px;z-index:300;font-size:14px;max-width:90vw;display:none}
 #toast.err{background:var(--bad)}
 .badge{display:inline-block;font-size:11px;padding:1px 6px;border-radius:6px;background:var(--line);color:var(--sub);margin-left:4px}
@@ -144,13 +150,30 @@ td input[type=text]{width:100%}
 </header>
 <main id="app"></main>
 <div id="toast"></div>
+<div id="loading"><span class="spin"></span><span id="loadtxt">불러오는 중…</span></div>
 
 <script>
 // ───────── 공통 ─────────
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let busyN = 0;
-function busy(d){ busyN += d; $('#bar').style.width = busyN > 0 ? '70%' : '100%'; if (busyN <= 0) setTimeout(() => { if (busyN <= 0) $('#bar').style.width = '0'; }, 250); }
+let loadT = null, slowT = null;
+function busy(d){
+  busyN += d;
+  $('#bar').style.width = busyN > 0 ? '70%' : '100%';
+  if (busyN <= 0) setTimeout(() => { if (busyN <= 0) $('#bar').style.width = '0'; }, 250);
+  const L = $('#loading');
+  if (busyN > 0){
+    document.body.classList.add('isbusy');
+    if (!loadT) loadT = setTimeout(() => {
+      L.classList.add('on'); $('#loadtxt').textContent = '불러오는 중이에요…';
+      slowT = setTimeout(() => { $('#loadtxt').textContent = '서버가 조금 느려요. 잠시만 기다려 주세요…'; }, 5000);
+    }, 200);
+  } else {
+    clearTimeout(loadT); clearTimeout(slowT); loadT = slowT = null;
+    L.classList.remove('on'); document.body.classList.remove('isbusy');
+  }
+}
 const RA_API = 'https://script.google.com/macros/s/AKfycbwwSTyAF53nJKFTiLYT--K1RzLUnh4lu55dyCT_byHoykrV4cNCX-MlHcK52GkAEv1J/exec';
 function call(fn, ...a){
   busy(1);
@@ -330,9 +353,16 @@ const User = (() => {
 
   async function init(){
     if (!EV){ U.boot = { noEvent: true }; render(); return; }
+    render();
     try {
-      U.boot = await call('pub_bootstrap', EV); setCourse(U.boot.courseName);
-      if (phoneOk()) { try { await login(true); } catch(e){ ls.del('ra_phone'); U.phone = ''; } }
+      const bootP = call('pub_bootstrap', EV);
+      const loginP = phoneOk() ? call('pub_login', EV, U.phone).catch(() => null) : Promise.resolve(null);
+      U.boot = await bootP; setCourse(U.boot.courseName);
+      if (phoneOk()){
+        const v = await loginP;
+        if (v){ U.view = v; U.edit = false; U.step = null; ls.set('ra_phone', U.phone); }
+        else { ls.del('ra_phone'); U.phone = ''; }
+      }
     } catch(e){ U.boot = { error: e.message }; }
     render();
   }
@@ -353,7 +383,7 @@ const User = (() => {
   function render(){
     if (mode !== 'user') return;
     const app = $('#app');
-    if (!U.boot){ app.innerHTML = '<div class="card">불러오는 중…</div>'; return; }
+    if (!U.boot){ app.innerHTML = '<div class="card" style="text-align:center;padding:24px"><span class="spin dark"></span> <span style="margin-left:8px">불러오는 중이에요…</span></div>'; return; }
     if (U.boot.noEvent){ app.innerHTML = '<div class="card big-card"><h2>연수 주소로 들어와 주세요</h2><p class="hint">연수 담당자가 보낸 숙소 배정 주소(링크)로 접속해야 해요. 받은 링크를 다시 눌러 주세요.</p></div>'; return; }
     if (U.boot.error){ app.innerHTML = '<div class="card big-card"><h2>들어갈 수 없어요</h2><p>' + esc(U.boot.error) + '</p></div>'; return; }
     const v = U.view;
