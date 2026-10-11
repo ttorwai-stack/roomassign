@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>율곡연수원 숙소 배정</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
 :root{
   --bg:#f4f6f9;--card:#fff;--ink:#1d2733;--sub:#6b7785;--line:#dde3ea;--pri:#2457c5;--pri-bg:#e8effc;
@@ -131,7 +132,7 @@ body.isbusy button,body.isbusy .zbtn{pointer-events:none}
 .roomno{font-weight:700;font-size:13px}
 .room .cnt{float:right;font-size:11px;color:var(--sub)}
 .room .tag{display:flex;width:100%;border-radius:999px;margin:3px 0 0;padding:2px 8px;font-size:12px;cursor:grab}
-.room .tag small{display:none}
+.room .tag small{display:none}.tag.staff{border-style:dashed}.room .tag.staff small{display:inline;margin-left:4px;font-size:10px}
 .pool .tag{margin:2px;padding:3px 8px;font-size:13px}
 .plan.sm .ho,.plan.sm .metxt{display:none}.plan .me{font-size:13px;color:var(--pri);font-weight:700;margin-top:2px}.plan.sm .me{font-size:14px;text-align:center}.plan.sm .pfix{font-size:7px;padding:1px;line-height:1.1}.plan.sm .plabel{font-weight:400;word-break:keep-all}.plan.sm .room{padding:1px;text-align:center}.plan.sm .roomno{font-size:9px;white-space:nowrap}.plan.sm .room.ondol .roomno::after{content:""}.plan.sm .pfix.plain .lift{font-size:7px}.plan.sm .pfix.stairs{padding:1px 2px}.plan.sm .pgrid{gap:2px}.plan.sm .room,.plan.sm .pfix.box{border-radius:5px}
 .savebar{position:sticky;top:58px;z-index:15;display:flex;gap:10px;align-items:center;padding:8px 12px}
@@ -197,6 +198,168 @@ function setCourse(name){
   const t = (name ? name + ' ' : '') + '숙소 배정';
   $('#ttl').textContent = t; document.title = '율곡연수원 ' + t;
 }
+// <PlanDoc>
+// 숙소배치도 한글(hwpx) 만들기 — 원본 배치도 hwpx를 틀로 쓰고, 방 칸에 이름만 넣고 성별 색을 칠한다.
+// 브라우저(Index.html에 같은 코드가 들어 있음)와 Node(시험)에서 같이 쓴다. JSZip 필요.
+//
+// 틀 규칙(숙소배치도.hwpx): 층마다 표 하나. 호실 칸("415호")과 그 아래 2개의 빈 칸(이름 칸)이 한 방.
+// 색: 화장실(남)/화장실(여) 칸의 배경색을 그대로 호실 칸(호수 칸+이름 칸)에 칠한다.
+var PlanDoc = (function () {
+  'use strict';
+
+  function escXml(s) { return String(s === undefined || s === null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+  // 같은 태그가 중첩될 수 있는 요소의 최상위 범위
+  function topLevel(xml, tag) {
+    var re = new RegExp('<' + tag + '[\\s>]|</' + tag + '>', 'g'), out = [], depth = 0, start = -1, m;
+    while ((m = re.exec(xml))) {
+      if (m[0].charAt(1) !== '/') { if (depth === 0) start = m.index; depth++; }
+      else { depth--; if (depth === 0) out.push([start, m.index + m[0].length]); }
+    }
+    return out;
+  }
+  function textOf(x) { return (x.match(/<hp:t>[^<]*<\/hp:t>/g) || []).map(function (t) { return t.replace(/<\/?hp:t>/g, ''); }).join(''); }
+  function num(x, re) { var m = x.match(re); return m ? +m[1] : 0; }
+
+  // 호실 칸의 배경색을 칠한 새 테두리 모양(borderFill)을 header.xml에 추가 → 새 id. 대각선은 지운다.
+  function addFill(ctx, baseId, color) {
+    var key = baseId + '|' + color; ctx.fills = ctx.fills || {};
+    if (ctx.fills[key]) return ctx.fills[key];
+    var m = ctx.header.match(new RegExp('<hh:borderFill id="' + baseId + '"[\\s\\S]*?</hh:borderFill>'));
+    if (!m) return baseId;
+    var ids = (ctx.header.match(/<hh:borderFill id="(\d+)"/g) || []).map(function (s) { return +s.match(/\d+/)[0]; });
+    var nid = Math.max.apply(null, ids) + 1;
+    var nb = m[0].replace(/id="\d+"/, 'id="' + nid + '"')
+      .replace(/<hh:slash type="\w+"/, '<hh:slash type="NONE"').replace(/<hh:backSlash type="\w+"/, '<hh:backSlash type="NONE"')
+      .replace(/<hc:fillBrush>[\s\S]*?<\/hc:fillBrush>/, '')
+      .replace('</hh:borderFill>', '<hc:fillBrush><hc:winBrush faceColor="' + color + '" hatchColor="#999999" alpha="0"/></hc:fillBrush></hh:borderFill>');
+    ctx.header = ctx.header.replace('</hh:borderFills>', nb + '</hh:borderFills>')
+      .replace(/(<hh:borderFills itemCnt=")(\d+)(")/, function (x, a, v, b) { return a + (+v + 1) + b; });
+    ctx.fills[key] = nid;
+    return nid;
+  }
+  function faceColorOf(header, id, fallback) {
+    var m = header.match(new RegExp('<hh:borderFill id="' + id + '"[\\s\\S]*?</hh:borderFill>'));
+    var c = m && m[0].match(/faceColor="(#[0-9A-Fa-f]{6})"/);
+    return c ? c[1] : fallback;
+  }
+  function setBorderFill(cell, id) { return cell.replace(/^(<hp:tc\b[^>]*borderFillIDRef=")\d+(")/, '$1' + id + '$2'); }
+
+  // 칸의 첫 문단을 틀로 줄 수만큼 문단을 새로 만든다(줄 모양 정보는 한글이 다시 계산)
+  function setCellLines(cell, lines) {
+    var sl = cell.match(/<hp:subList\b[^>]*>/), slEnd = cell.indexOf('</hp:subList>');
+    var inner = cell.slice(sl.index + sl[0].length, slEnd);
+    var proto = inner.slice.apply(inner, topLevel(inner, 'hp:p')[0]);
+    var open = proto.match(/^<hp:p\b[^>]*>/)[0];
+    var cp = (proto.match(/charPrIDRef="(\d+)"/) || [0, '0'])[1];
+    var paras = (lines.length ? lines : ['']).map(function (l) { return open + '<hp:run charPrIDRef="' + cp + '"><hp:t>' + escXml(l) + '</hp:t></hp:run></hp:p>'; }).join('');
+    return cell.slice(0, sl.index + sl[0].length) + paras + cell.slice(slEnd);
+  }
+
+  function cellsOf(tbl) {
+    return topLevel(tbl, 'hp:tc').map(function (r) {
+      var x = tbl.slice(r[0], r[1]);
+      return { s: r[0], e: r[1], xml: x, col: num(x, /colAddr="(\d+)"/), row: num(x, /rowAddr="(\d+)"/), rs: num(x, /rowSpan="(\d+)"/), cs: num(x, /colSpan="(\d+)"/), bf: num(x, /^<hp:tc\b[^>]*borderFillIDRef="(\d+)"/), text: textOf(x) };
+    });
+  }
+
+  /**
+   * data = { title: '연수명', subtitle: '연수생 N명, 운영자(강사) M명', rooms: { '415': { names: [...], g: 'M'|'F' } } }
+   * 반환: { section, header, report: { filled: [호실…], missing: [호실…] } }
+   */
+  function fill(section, header, data) {
+    var ctx = { header: header };
+    var tbls = topLevel(section, 'hp:tbl');
+    // 남/여 색: 화장실(남)·화장실(여) 칸의 배경색
+    var color = { M: '#DFE6F7', F: '#EBDEF1' };
+    tbls.forEach(function (r) {
+      cellsOf(section.slice(r[0], r[1])).forEach(function (c) {
+        var m = c.text.match(/화장실\s*\((남|여)\)/);
+        if (m) color[m[1] === '남' ? 'M' : 'F'] = faceColorOf(header, c.bf, color[m[1] === '남' ? 'M' : 'F']);
+      });
+    });
+    var filled = [], seen = {};
+    var edits = [];   // [start, end, newText] (section 기준)
+    tbls.forEach(function (r) {
+      var tbl = section.slice(r[0], r[1]);
+      var cells = cellsOf(tbl);
+      var repl = [];
+      cells.forEach(function (h) {
+        var m = h.text.match(/^\s*(\d{3})\s*호/);
+        if (!m || h.cs !== 1) return;
+        seen[m[1]] = true;
+        var room = data.rooms[m[1]];
+        if (!room || !room.names || !room.names.length) return;
+        var body = cells.filter(function (x) { return x.col === h.col && x.cs === 1 && x.row >= h.row + h.rs && !x.text.trim(); })
+          .sort(function (a, b) { return a.row - b.row; }).slice(0, 2);
+        var col = color[room.g === 'F' ? 'F' : 'M'];
+        if (body.length === 0) {
+          // 호실 칸 하나로 된 방(예: 1층 101호): 호수 아래 줄에 이름을 쓴다
+          repl.push([h.s, h.e, setCellLines(setBorderFill(h.xml, addFill(ctx, h.bf, col)), [h.text.trim()].concat(room.names))]);
+        } else {
+          repl.push([h.s, h.e, setBorderFill(h.xml, addFill(ctx, h.bf, col))]);
+          // 이름 칸: 첫 칸에 첫 사람, 둘째 칸에 나머지(한 칸에 여러 줄). 칸이 하나뿐이면 모두 그 칸에
+          var groups = body.length >= 2 ? [room.names.slice(0, 1), room.names.slice(1)] : [room.names];
+          groups.forEach(function (lines, i) {
+            var b = body[i];
+            repl.push([b.s, b.e, setCellLines(setBorderFill(b.xml, addFill(ctx, b.bf, col)), lines)]);
+          });
+        }
+        filled.push(m[1]);
+      });
+      // 제목 표(연수명·인원)
+      if (/숙소배치도/.test(textOf(tbl)) && data.title !== undefined) {
+        var t = tbl.replace(/<hp:t>([^<]*)<\/hp:t>/g, function (x, tx) {
+          if (/승진자과정|과정/.test(tx) && !/연수생/.test(tx)) return '<hp:t> ' + escXml(data.title) + '</hp:t>';
+          if (/연수생/.test(tx)) return '<hp:t>' + escXml(data.subtitle || '') + '</hp:t>';
+          return x;
+        });
+        repl.push([0, tbl.length, t]);
+      }
+      // 이 표의 변경을 뒤에서부터 적용
+      repl.sort(function (a, b) { return b[0] - a[0]; });
+      var out = tbl;
+      var applied = [];
+      repl.forEach(function (x) {
+        if (applied.some(function (a) { return x[0] < a[1] && x[1] > a[0]; })) return;   // 겹치는 변경은 건너뜀(제목 표 전체 교체 vs 칸)
+        out = out.slice(0, x[0]) + x[2] + out.slice(x[1]); applied.push(x);
+      });
+      edits.push([r[0], r[1], out]);
+    });
+    edits.sort(function (a, b) { return b[0] - a[0]; });
+    var sec = section;
+    edits.forEach(function (x) { sec = sec.slice(0, x[0]) + x[2] + sec.slice(x[1]); });
+    var missing = Object.keys(data.rooms).filter(function (id) { return data.rooms[id].names && data.rooms[id].names.length && filled.indexOf(id) < 0; });
+    return { section: sec, header: ctx.header, report: { filled: filled, missing: missing } };
+  }
+
+  var STORED = { 'mimetype': 1, 'version.xml': 1, 'Preview/PrvImage.png': 1 };
+
+  // 틀 hwpx(ArrayBuffer/Uint8Array) + 데이터 → 새 hwpx(Uint8Array). 원본의 항목 순서·압축 방식을 그대로 따른다.
+  function build(JSZip, templateBytes, data) {
+    return JSZip.loadAsync(templateBytes).then(function (zip) {
+      var names = Object.keys(zip.files).filter(function (n) { return !zip.files[n].dir; });
+      return Promise.all([zip.file('Contents/section0.xml').async('string'), zip.file('Contents/header.xml').async('string')]).then(function (xs) {
+        var r = fill(xs[0], xs[1], data);
+        var out = new JSZip();
+        var jobs = names.map(function (n) {
+          if (n === 'Contents/section0.xml') return Promise.resolve(r.section);
+          if (n === 'Contents/header.xml') return Promise.resolve(r.header);
+          if (n === 'Preview/PrvText.txt') return Promise.resolve((data.title || '') + '\n' + (data.subtitle || ''));
+          return zip.file(n).async('uint8array');
+        });
+        return Promise.all(jobs).then(function (datas) {
+          names.forEach(function (n, i) { out.file(n, datas[i], { compression: STORED[n] ? 'STORE' : 'DEFLATE', createFolders: false }); });
+          return out.generateAsync({ type: 'uint8array', createFolders: false, mimeType: 'application/hwp+zip' }).then(function (bytes) { return { bytes: bytes, report: r.report }; });
+        });
+      });
+    });
+  }
+
+  return { build: build, fill: fill, topLevel: topLevel, cellsOf: cellsOf, textOf: textOf };
+})();
+// </PlanDoc>
+const TPL_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? '/template.hwpx' : 'https://ttorwai-stack.github.io/roomassign/template.hwpx';
 const DEFAULT_OPTIONS = [
   { id:'commute', title:'출근', desc:'집에서 출퇴근해요', kind:'commute', traits:[], use:true },
   { id:'stay', title:'숙박', desc:'특별히 원하는 분은 없어요', kind:'stay', traits:[], use:true },
@@ -662,16 +825,17 @@ const Admin = (() => {
         <td><button class="gbtn ${p.gender||'N'}" data-act="gender">${GN[p.gender]}</button></td>
         <td><input type="text" data-f="org" value="${esc(p.org)}"></td>
         <td><input type="text" data-f="rank" value="${esc(p.rank)}"></td>
-        <td style="white-space:nowrap">${p.claimed?`✔ ***${esc(p.last4)} <button class="sm" data-act="resetPhone" title="등록된 번호 지우기">지우기</button>`:`<input type="text" data-f="phone" inputmode="numeric" placeholder="010-0000-0000" value="${esc(p.phonePending || '')}" style="width:130px">`}</td>
+        <td style="white-space:nowrap">${p.role ? '<span class="hint">-</span>' : p.claimed?`✔ ***${esc(p.last4)} <button class="sm" data-act="resetPhone" title="등록된 번호 지우기">지우기</button>`:`<input type="text" data-f="phone" inputmode="numeric" placeholder="010-0000-0000" value="${esc(p.phonePending || '')}" style="width:130px">`}</td>
+        <td><select data-f="role">${['', '강사', '보조강사', '운영자'].concat(p.role && !['강사','보조강사','운영자'].includes(p.role) ? [p.role] : []).map(r => `<option value="${esc(r)}" ${p.role===r?'selected':''}>${r || '연수생'}</option>`).join('')}</select></td>
         <td><button class="sm bad" data-act="del">삭제</button></td></tr>`).join('');
   }
 
   function vPeople(){
-    const ps = P(), cnt = g => ps.filter(p => p.gender === g).length;
+    const all = P(), ps = all.filter(p => !p.role), staff = all.filter(p => p.role), cnt = g => ps.filter(p => p.gender === g).length;
     const q = A.q.trim();
     const list = ps.map((p,i) => [p,i]).filter(([p]) => (!A.onlyBlank || !p.gender) && (!q || p.name.includes(q) || p.org.includes(q)));
     return `<div class="card"><h2>명단 현황</h2>
-      총 <b>${ps.length}</b>명 · 남 ${cnt('M')} · 여 ${cnt('F')} · <span style="color:var(--warn)">성별 미입력 ${cnt('')}</span> · 전화번호 등록 ${ps.filter(p=>p.claimed).length}${ps.some(p=>!p.claimed)?` <span style="color:var(--bad)">· 미등록 ${ps.filter(p=>!p.claimed).length}명은 접속할 수 없어요</span>`:''}
+      연수생 <b>${ps.length}</b>명${staff.length ? ` (강사·운영자 ${staff.length}명 별도)` : ''} · 남 ${cnt('M')} · 여 ${cnt('F')} · <span style="color:var(--warn)">성별 미입력 ${cnt('')}</span> · 전화번호 등록 ${ps.filter(p=>p.claimed).length}${ps.some(p=>!p.claimed)?` <span style="color:var(--bad)">· 미등록 ${ps.filter(p=>!p.claimed).length}명은 접속할 수 없어요</span>`:''}
     </div>
     <div class="card noprint"><h2>명단 올리기</h2>
       <div class="row" style="margin-bottom:8px"><button id="tpl">엑셀 서식 내려받기</button>
@@ -684,13 +848,19 @@ const Admin = (() => {
         <label class="chk"><input type="radio" name="impm" value="replace">명단 새로 구성(같은 사람의 선택·번호는 유지, 빠진 사람은 삭제)</label>
         <button class="pri" id="doImp">올리기</button>
         <button id="addOne">한 명 추가</button></div></div>
+    <div class="card noprint"><h2>강사·보조강사·운영자 추가</h2>
+      <p class="hint">전화번호나 선택 없이 이름·성별만 넣어요. 자동 배정에서는 빠지고, <b>④ 배정 탭에서 빈방에 직접 끌어다 놓아요.</b> (이 칸에 넣은 분은 연수생 같은 방 후보에 나오지 않아요)</p>
+      <div class="row"><input type="text" id="stName" placeholder="성명" style="width:140px">
+        <select id="stGender"><option value="M">남</option><option value="F">여</option></select>
+        <select id="stRole"><option>강사</option><option>보조강사</option><option>운영자</option></select>
+        <button class="pri" data-act="addStaff">추가</button></div></div>
     <div class="card noprint"><h2>성별 한꺼번에 입력</h2>
       <p class="hint">성별 열만 복사해(남/여, 한 줄에 한 명) 붙여넣으면 <b>아래 표의 현재 순서대로</b> 적용해요. 이미 입력된 성별은 덮어씁니다.</p>
       <div class="row"><textarea id="gen" style="min-height:60px;flex:1" placeholder="남&#10;여&#10;남"></textarea><button id="doGen">적용</button></div></div>
     <div class="card"><div class="row noprint" style="margin-bottom:6px">
       <input type="text" id="aq" placeholder="이름·소속 검색" value="${esc(A.q)}"><label class="chk"><input type="checkbox" id="blank" ${A.onlyBlank?'checked':''}>성별 미입력만</label>
       <span class="hint">성별 버튼: 남 → 여 → 미입력. 칸을 바꾸면 바로 저장돼요. 전화번호가 있어야 연수생이 접속해요.</span></div>
-      <div class="scroll"><table><thead><tr><th>#</th><th>성명</th><th>성별</th><th>소속</th><th>직급</th><th>전화번호</th><th></th></tr></thead><tbody id="peopleRows">${peopleRowsHtml()}</tbody></table></div></div>`;
+      <div class="scroll"><table><thead><tr><th>#</th><th>성명</th><th>성별</th><th>소속</th><th>직급</th><th>전화번호</th><th>구분</th><th></th></tr></thead><tbody id="peopleRows">${peopleRowsHtml()}</tbody></table></div></div>`;
   }
 
   function parseRows(text){
@@ -787,7 +957,7 @@ const Admin = (() => {
 
   // ── 신청 현황 ──
   function vStatus(){
-    const ps = P(), ch = A.st.choices, c = k => ps.filter(p => ((ch[p.id]||{}).status || 'none') === k).length;
+    const ps = P().filter(p => !p.role), ch = A.st.choices, c = k => ps.filter(p => ((ch[p.id]||{}).status || 'none') === k).length;
     const byId = pById();
     return `<div class="card"><h2>신청 현황</h2>총 ${ps.length}명 · 출근 ${c('commute')} · 숙박(요청 포함) ${c('mate')+c('stay')+c('style')} · <span style="color:var(--warn)">미응답 ${c('none')}</span>
       <div class="row noprint" style="margin-top:8px"><button class="bad" id="clearCh">전체 선택·배정 초기화</button><span class="hint">연수생이 응답하지 않으면 여기서 대신 선택해 줄 수 있어요.</span></div></div>
@@ -804,7 +974,7 @@ const Admin = (() => {
   function chip(p, extra){
     const k = A.st.choices[p.id] || {}, tr = (k.traits||[]).map(t => SHORT[t] || t[0]).join('');
     const pin = A.st.pins[p.id] ? 'pin' : '';
-    return `<span class="tag ${p.gender} ${pin} ${extra||''}" data-drag="${p.id}" title="${esc(p.org)}${tr?' · '+tr:''}">${esc(p.name)}${tr?`<small>${tr}</small>`:''}</span>`;
+    return `<span class="tag ${p.gender} ${pin} ${p.role?'staff':''} ${extra||''}" data-drag="${p.id}" title="${esc(p.org)}${p.role?' · '+esc(p.role):''}${tr?' · '+tr:''}">${esc(p.name)}${p.role?`<small>${esc(p.role)}</small>`:tr?`<small>${tr}</small>`:''}</span>`;
   }
   function vAssign(){
     const st = A.st, c = st.config, byId = pById();
@@ -813,15 +983,18 @@ const Admin = (() => {
     const badRooms = {}; st.warnings.forEach(w => { if (w.room) badRooms[w.room] = 1; });
     const assigned = Object.keys(st.assign).length, stay = st.stayers.length;
     const unplaced = st.unplaced.map(id => byId[id]).filter(Boolean);
-    const unresp = P().filter(p => ((st.choices[p.id]||{}).status || 'none') === 'none' && c.undecided !== 'stay');
+    const unresp = P().filter(p => !p.role && ((st.choices[p.id]||{}).status || 'none') === 'none' && c.undecided !== 'stay');
+    const staffPool = P().filter(p => p.role && !st.assign[p.id]);
     return `<div class="card noprint"><div class="banner ${st.published?'ok':'wait'}" style="margin:0 0 8px"><b>${st.published ? '✔ 지금 공개 중이에요 — 연수생이 자기 방을 볼 수 있어요' : '⚠ 아직 비공개예요 — 연수생은 방을 볼 수 없어요. 확인이 끝나면 아래 [확정 · 연수생에게 공개]를 눌러 주세요.'}</b></div><div class="row">
         <button class="pri" id="run">자동 배정 (고정 유지)</button><button id="runAll" class="bad">처음부터 다시(고정 해제)</button><button id="resetAsg" class="bad">배정 전부 지우기</button>
         <button id="pub" class="${st.published?'':'pri'}">${st.published ? '확정 취소(연수생 화면에서 숨김)' : '확정 · 연수생에게 공개'}</button>
-        <button id="csv">CSV 내려받기</button><button id="print">인쇄</button></div>
+        <button id="csv">CSV 내려받기</button><button id="print">인쇄</button><button id="hwpx" class="pri">숙소배치도 한글(hwpx) 내려받기</button></div>
       <p class="hint" style="margin:6px 0 0">이름표를 끌어서 방을 바꾸면 📌 고정되어, 다시 자동 배정해도 유지돼요. 자동 배정을 다시 실행하면 공개가 풀려요.</p></div>
     <div class="card"><b>배정 ${assigned}명</b> / 숙박 대상 ${stay}명 · 미응답 ${unresp.length}명(${c.undecided==='stay'?'숙박으로 처리':'제외'})
       ${st.warnings.length ? `<ul class="warnlist">${st.warnings.map(w => `<li>${esc(w.text)}</li>`).join('')}</ul>` : '<div class="saved">점검 결과 문제 없음</div>'}</div>
     <div class="card noprint"><h2>미배정 (${unplaced.length}명)</h2><div class="pool" data-drop="pool">${unplaced.map(p => chip(p)).join('') || '<span class="hint">없음</span>'}</div>
+      <h2 style="margin-top:12px">강사·운영자 — 빈방에 끌어다 놓으세요 (${staffPool.length}명 대기)</h2>
+      <div class="pool" data-drop="pool">${staffPool.map(p => chip(p)).join('') || '<span class="hint">' + (P().some(p => p.role) ? '모두 배치했어요' : '명단 탭에서 강사·운영자를 추가하세요') + '</span>'}</div>
       ${st.unplaced.length && Object.keys(st.assign).length ? '' : ''}</div>
     ${floors.map(f => `<div class="floor card"><h3>${f}층 <span class="badge">${({M:'남자 층',F:'여자 층','':'혼용'})[c.floorGender[f]||'']}</span></h3>${planHtml(f, c, r => {
       const occ = (rooms[r.id]||[]).map(id => byId[id]).filter(Boolean), g = occ[0] ? occ[0].gender : '', cap = cap_(r, c);
@@ -836,6 +1009,30 @@ const Admin = (() => {
       .forEach(p => rows.push([rid(p.id), (c.rooms.find(r => r.id === rid(p.id))||{}).floor || '', p.name, GN[p.gender], p.org, p.rank]));
     const text = '﻿' + rows.map(r => r.map(x => '"' + String(x).replace(/"/g,'""') + '"').join(',')).join('\r\n');
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type:'text/csv' })); a.download = '방배정표.csv'; a.click();
+  }
+
+  // ── 숙소배치도 한글(hwpx) ──
+  async function downloadHwpx(){
+    if (isDirty()) await saveAll();
+    const st = A.st, rooms = {};
+    P().forEach(p => {
+      const rid = st.assign[p.id]; if (!rid) return;
+      const r = rooms[rid] || (rooms[rid] = { names: [], g: '' });
+      r.names.push(p.name); if (!r.g && p.gender) r.g = p.gender;
+    });
+    if (!Object.keys(rooms).length){ toast('배정된 사람이 없어요', true); return; }
+    if (!st.published && !confirm('아직 공개(확정) 전이에요. 지금의 배정 상태로 파일을 만들까요?')) return;
+    const nT = P().filter(p => st.assign[p.id] && !p.role).length, nS = P().filter(p => st.assign[p.id] && p.role).length;
+    busy(1);
+    try {
+      const res = await fetch(TPL_URL); if (!res.ok) throw new Error('배치도 틀 파일을 불러오지 못했어요');
+      const out = await PlanDoc.build(JSZip, await res.arrayBuffer(), { title: st.event.name, subtitle: `연수생 ${nT}명, 운영자(강사) ${nS}명`, rooms });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([out.bytes], { type: 'application/hwp+zip' }));
+      a.download = ('숙소배치도_' + st.event.name + '.hwpx').replace(/[\\/:*?"<>|]/g, '_'); a.click();
+      toast(out.report.missing.length ? '파일을 만들었어요. 배치도에 없는 호실: ' + out.report.missing.join(', ') : '한글 파일을 만들었어요');
+    } catch(er){ toast(er.message, true); }
+    busy(-1);
   }
 
   // ── 이벤트 ──
@@ -880,6 +1077,10 @@ const Admin = (() => {
     const row = t.closest('[data-pid]'), pid = row && row.dataset.pid;
     switch (t.dataset.act || t.id){
       case 'dlClear': { A.st.config.deadline = ''; render(); saveCfg(); break; }
+      case 'addStaff': {
+        const name = ($('#stName').value || '').trim(); if (!name){ toast('성명을 입력해 주세요', true); return; }
+        await act('adm_addStaff', [{ name, gender: $('#stGender').value, role: $('#stRole').value }]); toast(name + ' 님을 추가했어요'); break; }
+      case 'hwpx': await downloadHwpx(); break;
       case 'optAdd': { A.st.config.options.push({ id: 'o' + Date.now().toString(36), title: '새 선택지', desc: '', kind: 'stay', traits: [], use: true }); render(); saveCfg(); break; }
       case 'optUp': case 'optDown': {
         const i = Number(t.closest('[data-oi]').dataset.oi), os = A.st.config.options, j = (t.dataset.act === 'optUp') ? i - 1 : i + 1;
