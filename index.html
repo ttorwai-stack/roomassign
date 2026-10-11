@@ -133,7 +133,7 @@ body.isbusy button,body.isbusy .zbtn{pointer-events:none}
 .room .tag{display:flex;width:100%;border-radius:999px;margin:3px 0 0;padding:2px 8px;font-size:12px;cursor:grab}
 .room .tag small{display:none}
 .pool .tag{margin:2px;padding:3px 8px;font-size:13px}
-.plan.sm .pfix{font-size:7px;padding:1px;line-height:1.1}.plan.sm .plabel{font-weight:400;word-break:keep-all}.plan.sm .room{padding:1px;text-align:center}.plan.sm .roomno{font-size:9px;white-space:nowrap}.plan.sm .room.ondol .roomno::after{content:""}.plan.sm .pfix.plain .lift{font-size:7px}.plan.sm .pfix.stairs{padding:1px 2px}.plan.sm .pgrid{gap:2px}.plan.sm .room,.plan.sm .pfix.box{border-radius:5px}
+.plan.sm .ho,.plan.sm .metxt{display:none}.plan .me{font-size:13px;color:var(--pri);font-weight:700;margin-top:2px}.plan.sm .me{font-size:14px;text-align:center}.plan.sm .pfix{font-size:7px;padding:1px;line-height:1.1}.plan.sm .plabel{font-weight:400;word-break:keep-all}.plan.sm .room{padding:1px;text-align:center}.plan.sm .roomno{font-size:9px;white-space:nowrap}.plan.sm .room.ondol .roomno::after{content:""}.plan.sm .pfix.plain .lift{font-size:7px}.plan.sm .pfix.stairs{padding:1px 2px}.plan.sm .pgrid{gap:2px}.plan.sm .room,.plan.sm .pfix.box{border-radius:5px}
 .savebar{position:sticky;top:58px;z-index:15;display:flex;gap:10px;align-items:center;padding:8px 12px}
 .savebar.dirty{border-color:var(--warn);background:var(--warn-bg)}
 @media print{header,.noprint,.tabs{display:none!important}.card{border:0}body{background:#fff;color:#000}}
@@ -389,7 +389,7 @@ const User = (() => {
     const v = U.view;
     if (!v){ app.innerHTML = loginView(); bind(); return; }
     let h = '';
-    if (v.published){ app.innerHTML = roomCard(v); bind(); return; }
+    if (v.published){ app.innerHTML = roomCard(v); bind(); fitPlan(); return; }
     if (v.closed){
       const dt = esc((v.deadline || '').replace('T', ' '));
       const b = `<div class="banner bad" style="margin:0 0 10px"><b>신청이 마감되었어요</b> <span style="font-size:13px">(마감 ${dt}) · 이후 배정은 연수 담당자가 진행하고, 확정되면 이 화면에서 방을 볼 수 있어요.</span></div>`;
@@ -407,6 +407,19 @@ const User = (() => {
     else h = steps(4) + doneView();
     app.innerHTML = dlBanner + h; bind();
   }
+
+  // 배치도를 화면 폭에 맞춰 최대한 크게(넓은 화면은 관리자 화면처럼 큼직하게, 좁은 폰은 한 화면에 들어가게)
+  function fitPlan(){
+    const p = document.querySelector('.plan'); if (!p) return;
+    const w = p.clientWidth - 4;
+    let cw = Math.floor((w - 40) / 11);
+    if (cw < 50) cw = Math.floor((w - 20) / 11);
+    cw = Math.max(22, Math.min(cw, 86));
+    p.style.setProperty('--cw', cw + 'px');
+    p.style.setProperty('--ch', Math.round(Math.max(48, Math.min(cw * 1.5, 128))) + 'px');
+    p.classList.toggle('sm', cw < 50);
+  }
+  window.addEventListener('resize', () => { if (mode === 'user') fitPlan(); });
 
   function loginView(){
     return `${steps(1)}<div class="card big-card"><h2>휴대전화 번호를 입력해 주세요</h2>
@@ -510,7 +523,7 @@ const User = (() => {
     if (v.room){
       h += `<div class="roomcard">${v.room.floor}층 ${esc(v.room.id)}호${v.room.type==='ondol'?' <span class="badge">온돌방</span>':''}</div>
         <p style="margin:8px 0 0">같은 방: ${v.room.mates.length ? v.room.mates.map(m => `<b>${esc(m.name)}</b>${m.org?` <span class="hint">${esc(m.org)}</span>`:''}`).join(', ') : '혼자 사용'}</p></div>
-        <div class="card"><h2>${v.room.floor}층 배치도 <span class="hint">(★ 파란 테두리가 내 방)</span></h2>${planHtml(v.room.floor, { rooms: v.rooms }, r => `<div class="room ${r.id===v.room.id?'mine':'dim'} ${r.type==='ondol'?'ondol':''}"><span class="roomno">${r.id}</span>${r.id===v.room.id?'<div style="font-size:14px;color:var(--pri)">★</div>':''}</div>`, { sm: true })}`;
+        <div class="card"><h2>${v.room.floor}층 배치도 <span class="hint">(★ 파란 테두리가 내 방)</span></h2>${planHtml(v.room.floor, { rooms: v.rooms }, r => `<div class="room ${r.id===v.room.id?'mine':'dim'} ${r.type==='ondol'?'ondol':''}"><span class="roomno">${r.id}<span class="ho">호</span></span>${r.id===v.room.id?'<div class="me">★<span class="metxt"> 내 방</span></div>':''}</div>`)}`;
     } else {
       h += `<div class="banner wait" style="margin:8px 0 0">${status()==='commute' ? '출근을 선택하셨어요. 배정된 숙소가 없습니다.' : '배정된 방이 없습니다. 연수 담당자에게 문의해 주세요.'}</div>`;
     }
