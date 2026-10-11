@@ -442,6 +442,19 @@ const User = (() => {
     return pickKind(c.mates.length ? 'pick' : 'stay');
   }
 
+  // 후보 목록만 따로 그린다 — 검색칸은 다시 그리지 않아야 한글 입력(조합 중인 글자)이 깨지지 않는다
+  function candListHtml(){
+    const v = U.view, mates = v.choice.mates, cands = v.candidates;
+    const q = U.cq.trim(), order = { choseMe:0, stay:1, undecided:1, otherPending:2, full:3, commute:4 };
+    const list = cands.filter(x => (!q || x.name.includes(q) || x.org.includes(q)))
+      .sort((a,b) => order[a.state]-order[b.state] || a.name.localeCompare(b.name,'ko'));
+    return list.map(x => {
+      const dis = ['full','commute'].includes(x.state), picked = mates.includes(x.id);
+      return `<div class="cand ${x.state} ${dis?'dis':''}"><div style="flex:1"><b>${esc(x.name)}</b> <span class="hint">${esc(x.org)}</span>${x.dup ? ' <span class="badge st">동명이인 있음</span>' : ''}
+          <div class="why">${x.state==='choseMe'?'💚 나를 선택함 · ':''}${esc(x.note)}</div></div>
+          ${dis ? '' : picked ? '<span class="badge">선택함</span>' : `<button class="sm pri" data-act="mate" data-id="${x.id}">선택</button>`}</div>`; }).join('') || '<p class="hint">표시할 분이 없어요</p>';
+  }
+
   // 4단계: 같은 방 원하는 분 고르기 (상대의 스타일이 보임)
   function candView(){
     const v = U.view, c = v.choice, mates = c.mates, cands = v.candidates, byId = {}; cands.forEach(x => byId[x.id] = x);
@@ -457,14 +470,7 @@ const User = (() => {
     });
     if (v.incoming.some(i => mates.indexOf(i) < 0)) h += `<div class="banner ok">나를 선택한 분이 있어요! 아래 <b>"나를 선택함"</b> 분을 선택하면 합방이 확정돼요.</div>`;
     h += `<input type="text" id="cq" placeholder="이름 검색" value="${esc(U.cq)}" class="bigin" style="font-size:16px">`;
-    const q = U.cq.trim(), order = { choseMe:0, stay:1, undecided:1, otherPending:2, full:3, commute:4 };
-    const list = cands.filter(x => (!q || x.name.includes(q) || x.org.includes(q)))
-      .sort((a,b) => order[a.state]-order[b.state] || a.name.localeCompare(b.name,'ko'));
-    h += `<div style="max-height:46vh;overflow:auto;margin-top:6px">${list.map(x => {
-      const dis = ['full','commute'].includes(x.state), picked = mates.includes(x.id);
-      return `<div class="cand ${x.state} ${dis?'dis':''}"><div style="flex:1"><b>${esc(x.name)}</b> <span class="hint">${esc(x.org)}</span>${x.dup ? ' <span class="badge st">동명이인 있음</span>' : ''}
-          <div class="why">${x.state==='choseMe'?'💚 나를 선택함 · ':''}${esc(x.note)}</div></div>
-          ${dis ? '' : picked ? '<span class="badge">선택함</span>' : `<button class="sm pri" data-act="mate" data-id="${x.id}">선택</button>`}</div>`; }).join('') || '<p class="hint">표시할 분이 없어요</p>'}</div>
+    h += `<div id="candlist" style="max-height:46vh;overflow:auto;margin-top:6px">${candListHtml()}</div>
       <div class="row2" style="margin-top:10px"><button class="bigbtn" data-act="back">← 다시 선택</button><button class="bigbtn pri" data-act="finish">선택 완료</button></div></div>`;
     return h;
   }
@@ -519,7 +525,7 @@ const User = (() => {
       try { await login(); } catch(e){ toast(e.message, true); }
     };
     const sw = $('#switch'); if (sw) sw.onclick = logout;
-    const cq = $('#cq'); if (cq) cq.oninput = () => { U.cq = cq.value; const pos = cq.selectionStart; render(); const n = $('#cq'); n.focus(); n.setSelectionRange(pos,pos); };
+    const cq = $('#cq'); if (cq) cq.oninput = () => { U.cq = cq.value; const L = $('#candlist'); if (L) L.innerHTML = candListHtml(); };
   }
 
   async function submit(patch){
@@ -635,6 +641,18 @@ const Admin = (() => {
   const pById = () => { const m = {}; P().forEach(p => m[p.id] = p); return m; };
 
   // ── 명단 ──
+  function peopleRowsHtml(){
+    const ps = P(), q = A.q.trim();
+    const list = ps.map((p,i) => [p,i]).filter(([p]) => (!A.onlyBlank || !p.gender) && (!q || p.name.includes(q) || p.org.includes(q)));
+    return list.map(([p,i]) => `<tr data-pid="${p.id}"><td>${i+1}</td>
+        <td><input type="text" data-f="name" value="${esc(p.name)}"></td>
+        <td><button class="gbtn ${p.gender||'N'}" data-act="gender">${GN[p.gender]}</button></td>
+        <td><input type="text" data-f="org" value="${esc(p.org)}"></td>
+        <td><input type="text" data-f="rank" value="${esc(p.rank)}"></td>
+        <td style="white-space:nowrap">${p.claimed?`✔ ***${esc(p.last4)} <button class="sm" data-act="resetPhone" title="등록된 번호 지우기">지우기</button>`:`<input type="text" data-f="phone" inputmode="numeric" placeholder="010-0000-0000" value="${esc(p.phonePending || '')}" style="width:130px">`}</td>
+        <td><button class="sm bad" data-act="del">삭제</button></td></tr>`).join('');
+  }
+
   function vPeople(){
     const ps = P(), cnt = g => ps.filter(p => p.gender === g).length;
     const q = A.q.trim();
@@ -659,15 +677,7 @@ const Admin = (() => {
     <div class="card"><div class="row noprint" style="margin-bottom:6px">
       <input type="text" id="aq" placeholder="이름·소속 검색" value="${esc(A.q)}"><label class="chk"><input type="checkbox" id="blank" ${A.onlyBlank?'checked':''}>성별 미입력만</label>
       <span class="hint">성별 버튼: 남 → 여 → 미입력. 칸을 바꾸면 바로 저장돼요. 전화번호가 있어야 연수생이 접속해요.</span></div>
-      <div class="scroll"><table><thead><tr><th>#</th><th>성명</th><th>성별</th><th>소속</th><th>직급</th><th>전화번호</th><th></th></tr></thead><tbody>
-      ${list.map(([p,i]) => `<tr data-pid="${p.id}"><td>${i+1}</td>
-        <td><input type="text" data-f="name" value="${esc(p.name)}"></td>
-        <td><button class="gbtn ${p.gender||'N'}" data-act="gender">${GN[p.gender]}</button></td>
-        <td><input type="text" data-f="org" value="${esc(p.org)}"></td>
-        <td><input type="text" data-f="rank" value="${esc(p.rank)}"></td>
-        <td style="white-space:nowrap">${p.claimed?`✔ ***${esc(p.last4)} <button class="sm" data-act="resetPhone" title="등록된 번호 지우기">지우기</button>`:`<input type="text" data-f="phone" inputmode="numeric" placeholder="010-0000-0000" value="${esc(p.phonePending || '')}" style="width:130px">`}</td>
-        <td><button class="sm bad" data-act="del">삭제</button></td></tr>`).join('')}
-      </tbody></table></div></div>`;
+      <div class="scroll"><table><thead><tr><th>#</th><th>성명</th><th>성별</th><th>소속</th><th>직급</th><th>전화번호</th><th></th></tr></thead><tbody id="peopleRows">${peopleRowsHtml()}</tbody></table></div></div>`;
   }
 
   function parseRows(text){
@@ -951,7 +961,7 @@ const Admin = (() => {
   });
   document.addEventListener('input', e => {
     if (mode !== 'admin') return;
-    if (e.target.id === 'aq'){ A.q = e.target.value; const pos = e.target.selectionStart; render(); const n = $('#aq'); if (n){ n.focus(); n.setSelectionRange(pos,pos); } }
+    if (e.target.id === 'aq'){ A.q = e.target.value; const R = $('#peopleRows'); if (R) R.innerHTML = peopleRowsHtml(); }
   });
   document.addEventListener('change', e => { if (mode === 'admin' && e.target.id === 'blank'){ A.onlyBlank = e.target.checked; render(); } });
 
