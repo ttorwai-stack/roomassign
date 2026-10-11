@@ -465,7 +465,7 @@ const User = (() => {
       <p style="font-size:18px;margin:4px 0"><b>${title}</b></p>${extra}
       ${inc.length ? '<div class="banner ok" style="margin-top:8px">나를 같은 방으로 선택한 분이 있어요. 수락하려면 [같은 방 고르기]를 눌러 주세요.</div>' : ''}
       <p class="hint" style="margin-top:10px">방 배정이 확정되면 같은 주소에서 같은 번호로 들어와 내 방을 확인할 수 있어요.</p>
-      ${locked ? '' : `<div class="row2"><button class="bigbtn" data-act="edit">선택 바꾸기</button>${stay ? '<button class="bigbtn" data-act="remate">같은 방 고르기</button>' : ''}</div>`}
+      ${locked ? '' : `<div class="row2"><button class="bigbtn" data-act="edit">선택 바꾸기</button>${stay && (!c.traits.length || inc.length) ? '<button class="bigbtn" data-act="remate">같은 방 고르기</button>' : ''}</div>`}
       <button class="sm link" id="switch">다른 번호로 들어가기</button></div>`;
   }
 
@@ -506,8 +506,8 @@ const User = (() => {
     if (o.kind === 'commute'){ U.step = null; return submit({ status:'commute', mates:[], traits:[], sameWish:false, note:'' }); }
     if (o.kind === 'stay'){ U.step = null; return submit({ status:'stay', mates:keep.mates, traits:[], sameWish:false, note:'' }); }
     if (o.kind === 'pick'){ U.step = 'cand'; return submit({ status:'stay', mates:keep.mates, traits:[], sameWish:false, note:'' }); }
-    U.step = 'cand';
-    return submit({ status:'stay', mates:keep.mates, traits:o.traits, sameWish:true, note:'' });
+    U.step = null; // 유형 선택은 사람을 고르지 않고 바로 완료 (자동 배정이 같은 유형끼리 매칭)
+    return submit({ status:'stay', mates:[], traits:o.traits, sameWish:true, note:'' });
   }
   async function addMate(id){
     const v = U.view, c = v.candidates.find(x => x.id === id), mates = v.choice.mates;
@@ -690,7 +690,7 @@ const Admin = (() => {
     const c = A.st.config, os = c.options || [];
     return `<div class="card"><h2>연수생 선택 화면의 선택지</h2>
       <p class="hint">연수생이 이름표를 놓는 칸의 <b>제목과 설명</b>을 바꾸고, 쓰지 않을 선택지는 끄거나 지우고, 순서를 바꿀 수 있어요. 종류에 따라 이후 동작이 달라져요 —
-      <b>출근</b>: 방 배정 제외 · <b>숙박</b>: 바로 완료 · <b>숙박 + 같은 방 지정</b>: 같은 방 쓸 분을 이름으로 고르는 화면으로 이동 · <b>숙박 + 자동 배정 유형</b>: 고른 유형(코골이 등)으로 자동 배정에 반영되고 같은 방 지정 화면으로 이동.
+      <b>출근</b>: 방 배정 제외 · <b>숙박</b>: 바로 완료 · <b>숙박 + 같은 방 지정</b>: 같은 방 쓸 분을 이름으로 고르는 화면으로 이동 · <b>숙박 + 자동 배정 유형</b>: 고른 유형(코골이 등)이 자동 배정에 반영돼요. 사람을 고르는 화면 없이 바로 완료되고, 같은 유형끼리 시스템이 매칭해요.
       선택지에 쓴 번호(①②…)는 순서대로 자동으로 붙어요.</p>
       ${os.map((o,i) => `<div class="optrow" data-oi="${i}">
         <label class="chk"><input type="checkbox" data-ou ${o.use?'checked':''}>사용</label><b>${CIRC_A[i] || (i+1)+'.'}</b>
