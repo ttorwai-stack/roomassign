@@ -706,7 +706,8 @@ const Admin = (() => {
       <div class="row">
         <label>방당 인원 <select id="per">${[1,2,3,4,5,6].map(n => `<option ${c.perRoom===n?'selected':''}>${n}</option>`).join('')}</select>명</label>
         <label>온돌방 정원 <select id="ond">${[1,2,3,4,5,6,8].map(n => `<option ${c.ondolCap===n?'selected':''}>${n}</option>`).join('')}</select>명</label>
-        <label class="chk"><input type="checkbox" id="bal" ${c.balance?'checked':''}>방별 인원 고르게(1명만 혼자 남는 방 방지)</label>
+        
+        <span class="hint" style="flex-basis:100%">배정 원칙: 방 정원을 넘기지 않고, 모두 이 인원으로 채우되 나누어떨어지지 않는 인원만 작은 방으로 묶어요(정원 2: 남는 1명은 독실 / 정원 3: 남는 2명은 2인실 하나, 남는 1명은 2인실 둘). 그 안에서 생활 유형이 맞는 분끼리 최대한 같은 방이 돼요.</span>
         <label class="chk"><input type="checkbox" id="cross" ${c.allowCross?'checked':''}>자리가 모자라면 다른 성별 층의 빈 방도 사용</label></div>
       <div class="row" style="margin-top:6px">미응답자:
         <label class="chk"><input type="radio" name="und" value="exclude" ${c.undecided!=='stay'?'checked':''}>배정에서 제외</label>
