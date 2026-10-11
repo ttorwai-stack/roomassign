@@ -571,7 +571,7 @@ const Admin = (() => {
     if (!A.ev){ setCourse(''); app.innerHTML = vEvents(); return; }
     if (!A.st){ try { A.st = await call('adm_state', A.pw, A.ev); } catch(e){ toast(e.message, true); A.ev = ''; render(); return; } }
     const t = A.tab, evName = A.st.event.name, link = PUBLIC_BASE + '?c=' + A.ev;
-    let h = `<div class="card noprint"><div class="row"><button id="toEvents">← 연수 목록</button><b style="font-size:16px">${esc(evName)}</b>${A.st.published ? '<span class="badge" style="background:var(--ok-bg);color:var(--ok)">공개 중</span>' : ''}</div>
+    let h = `<div class="card noprint"><div class="row"><button id="toEvents">← 연수 목록</button><label class="hint">연수 이름</label><input type="text" id="evName" value="${esc(evName)}" maxlength="60" style="font-size:16px;font-weight:700;min-width:220px;flex:1"><button class="sm" data-act="renameCur">이름 변경</button>${A.st.published ? '<span class="badge" style="background:var(--ok-bg);color:var(--ok)">공개 중</span>' : ''}</div>
       <div class="row" style="margin-top:6px"><span class="hint">연수생 주소</span><input type="text" readonly value="${esc(link)}" style="flex:1;min-width:220px" onclick="this.select()"><button class="sm" data-act="copyLink" data-link="${esc(link)}">복사</button></div></div>
       <div class="tabs noprint" style="margin-bottom:10px">${TABS.map(([k,l]) => `<button class="tab ${t===k?'on':''}" data-tab="${k}">${l}</button>`).join('')}
       <button class="tab" id="logout" style="margin-left:auto">로그아웃</button></div>`;
@@ -814,6 +814,10 @@ const Admin = (() => {
     if (t.dataset.act === 'createEv'){
       const name = $('#newName').value.trim(); if (!name){ toast('연수 이름을 입력해 주세요', true); return; }
       try { const r = await call('adm_createEvent', A.pw, name, $('#copyFrom').value); A.events = r.events; toast('연수를 만들었어요'); render(); } catch(er){ toast(er.message, true); }
+      return; }
+    if (t.dataset.act === 'renameCur'){
+      const n = ($('#evName').value || '').trim(); if (!n){ toast('연수 이름을 입력해 주세요', true); return; }
+      try { A.events = await call('adm_renameEvent', A.pw, A.ev, n); A.st.event.name = n; setCourse(n); toast('연수 이름을 바꿨어요'); } catch(er){ toast(er.message, true); }
       return; }
     if (t.dataset.act === 'renameEv'){ const cur = (A.events.find(x => x.id === eid) || {}).name, n = prompt('연수 이름', cur); if (n && n.trim()){ try { A.events = await call('adm_renameEvent', A.pw, eid, n); render(); } catch(er){ toast(er.message, true); } } return; }
     if (t.dataset.act === 'archiveEv'){ try { A.events = await call('adm_archiveEvent', A.pw, eid, t.dataset.v === '1'); render(); } catch(er){ toast(er.message, true); } return; }
