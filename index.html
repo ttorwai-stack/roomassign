@@ -183,6 +183,15 @@ const DEFAULT_OPTIONS = [
   { id:'late', title:'숙박 · 늦게 들어올 수 있어요', desc:'같은 스타일의 분과 같은 방을 원해요', kind:'style', traits:['late'], use:true },
   { id:'early', title:'숙박 · 일찍 자고 일찍 일어나요', desc:'같은 스타일의 분과 같은 방을 원해요', kind:'style', traits:['early'], use:true }
 ];
+// 전화번호 입력 보조: 숫자만 쳐도 010-0000-0000 모양으로 하이픈이 자동으로 들어간다
+function fmtPhone(v){
+  let d = String(v || '').replace(/[^0-9]/g, '').slice(0, 11);
+  if (/^1[0-9]{9}$/.test(d)) d = '0' + d; // 엑셀에서 앞 0이 빠진 값
+  if (d.length < 4) return d;
+  if (d.length < 8) return d.slice(0, 3) + '-' + d.slice(3);
+  return d.slice(0, 3) + '-' + d.slice(3, 7) + '-' + d.slice(7);
+}
+document.addEventListener('input', e => { const t = e.target; if (t.id === 'phone' || t.dataset.f === 'phone') t.value = fmtPhone(t.value); });
 const GN = { M:'남', F:'여', '':'미입력' };
 
 // 숙소 배치도(숙소배치도.pdf 기준). 11칸 격자: 위쪽 줄(1) · 복도(2) · 아래쪽 줄(3)
@@ -474,7 +483,7 @@ const User = (() => {
 
   function bind(){
     const ph = $('#phone');
-    if (ph){ ph.oninput = () => { U.phone = ph.value; }; ph.onkeydown = e => { if (e.key === 'Enter') $('#go').click(); }; }
+    if (ph){ ph.oninput = () => { U.phone = fmtPhone(ph.value); }; ph.onkeydown = e => { if (e.key === 'Enter') $('#go').click(); }; }
     const go = $('#go'); if (go) go.onclick = async () => {
       if (!phoneOk()){ toast('휴대전화 번호를 010-0000-0000 형식으로 입력해 주세요', true); return; }
       try { await login(); } catch(e){ toast(e.message, true); }
