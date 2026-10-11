@@ -132,7 +132,7 @@ body.isbusy button,body.isbusy .zbtn{pointer-events:none}
 .roomno{font-weight:700;font-size:13px}
 .room .cnt{float:right;font-size:11px;color:var(--sub)}
 .room .tag{display:flex;width:100%;border-radius:999px;margin:3px 0 0;padding:2px 8px;font-size:12px;cursor:grab}
-.room .tag small{display:none}.tag.staff{border-style:dashed}.room .tag.staff small{display:inline;margin-left:4px;font-size:10px}
+.room .tag small{display:none}.tag.staff{border-style:dashed}.staffbar{position:sticky;top:58px;z-index:14;padding:8px 12px;box-shadow:0 2px 8px rgba(0,0,0,.12)}.pool.trash{border-color:var(--bad);color:var(--bad);font-size:13px}.pool.trash.over{background:var(--bad-bg)}.room .tag.staff small{display:inline;margin-left:4px;font-size:10px}
 .pool .tag{margin:2px;padding:3px 8px;font-size:13px}
 .plan.sm .ho,.plan.sm .metxt{display:none}.plan .me{font-size:13px;color:var(--pri);font-weight:700;margin-top:2px}.plan.sm .me{font-size:14px;text-align:center}.plan.sm .pfix{font-size:7px;padding:1px;line-height:1.1}.plan.sm .plabel{font-weight:400;word-break:keep-all}.plan.sm .room{padding:1px;text-align:center}.plan.sm .roomno{font-size:9px;white-space:nowrap}.plan.sm .room.ondol .roomno::after{content:""}.plan.sm .pfix.plain .lift{font-size:7px}.plan.sm .pfix.stairs{padding:1px 2px}.plan.sm .pgrid{gap:2px}.plan.sm .room,.plan.sm .pfix.box{border-radius:5px}
 .savebar{position:sticky;top:58px;z-index:15;display:flex;gap:10px;align-items:center;padding:8px 12px}
@@ -443,7 +443,14 @@ const DnD = (() => {
     st.dragging = true;
     ghost = st.el.cloneNode(true); ghost.classList.add('ghost'); document.body.appendChild(ghost); move(x, y);
   }
+  let scrollV = 0, scrollT = null;
+  function autoScroll(y){
+    scrollV = y < 90 ? -18 : (y > innerHeight - 90 ? 18 : 0);
+    if (scrollV && !scrollT) scrollT = setInterval(() => { if (!scrollV) { clearInterval(scrollT); scrollT = null; return; } window.scrollBy(0, scrollV); }, 16);
+    if (!scrollV && scrollT){ clearInterval(scrollT); scrollT = null; }
+  }
   function move(x, y){
+    autoScroll(y);
     ghost.style.left = x + 'px'; ghost.style.top = y + 'px';
     ghost.style.display = 'none'; const t = document.elementFromPoint(x, y); ghost.style.display = '';
     const d = t && t.closest('[data-drop]');
@@ -470,7 +477,8 @@ const DnD = (() => {
     clearTimeout(st.timer);
     const s = st; st = null;
     if (s.dragging){
-      const target = over; ghost.remove(); ghost = null; clearOver();
+      scrollV = 0; if (scrollT){ clearInterval(scrollT); scrollT = null; }
+      ghost.style.display = 'none'; const under = document.elementFromPoint(e.clientX, e.clientY); const target = (under && under.closest('[data-drop]')) || over; ghost.remove(); ghost = null; clearOver();
       if (!cancel && target) { setSel(null); window.onDrop(s.id, target.dataset.drop, s.el); }
     } else if (!cancel){ setSel(s.el); }
   };
@@ -985,7 +993,9 @@ const Admin = (() => {
     const unplaced = st.unplaced.map(id => byId[id]).filter(Boolean);
     const unresp = P().filter(p => !p.role && ((st.choices[p.id]||{}).status || 'none') === 'none' && c.undecided !== 'stay');
     const staffPool = P().filter(p => p.role && !st.assign[p.id]);
-    return `<div class="card noprint"><div class="banner ${st.published?'ok':'wait'}" style="margin:0 0 8px"><b>${st.published ? '✔ 지금 공개 중이에요 — 연수생이 자기 방을 볼 수 있어요' : '⚠ 아직 비공개예요 — 연수생은 방을 볼 수 없어요. 확인이 끝나면 아래 [확정 · 연수생에게 공개]를 눌러 주세요.'}</b></div><div class="row">
+    const staffBar = `<div class="card noprint staffbar"><b style="font-size:13px">강사·운영자 새 이름표</b> <span class="hint" style="font-size:12px">방으로 끌어다 놓기(이름을 물어봐요) · 이름표 더블클릭=이름 고치기</span><div>${['강사', '보조강사', '운영자'].map(r => ['M', 'F'].map(g => `<span class="tag ${g} staff" data-drag="new:${r}:${g}" style="margin:2px">＋ ${r}(${g === 'M' ? '남' : '여'})</span>`).join('')).join('')}
+        <span class="pool trash" data-drop="trash" style="display:inline-block;min-height:0;padding:5px 12px;margin-left:8px">🗑 끌어서 삭제</span></div></div>`;
+    return staffBar + `<div class="card noprint"><div class="banner ${st.published?'ok':'wait'}" style="margin:0 0 8px"><b>${st.published ? '✔ 지금 공개 중이에요 — 연수생이 자기 방을 볼 수 있어요' : '⚠ 아직 비공개예요 — 연수생은 방을 볼 수 없어요. 확인이 끝나면 아래 [확정 · 연수생에게 공개]를 눌러 주세요.'}</b></div><div class="row">
         <button class="pri" id="run">자동 배정 (고정 유지)</button><button id="runAll" class="bad">처음부터 다시(고정 해제)</button><button id="resetAsg" class="bad">배정 전부 지우기</button>
         <button id="pub" class="${st.published?'':'pri'}">${st.published ? '확정 취소(연수생 화면에서 숨김)' : '확정 · 연수생에게 공개'}</button>
         <button id="csv">CSV 내려받기</button><button id="print">인쇄</button><button id="hwpx" class="pri">숙소배치도 한글(hwpx) 내려받기</button></div>
@@ -993,8 +1003,9 @@ const Admin = (() => {
     <div class="card"><b>배정 ${assigned}명</b> / 숙박 대상 ${stay}명 · 미응답 ${unresp.length}명(${c.undecided==='stay'?'숙박으로 처리':'제외'})
       ${st.warnings.length ? `<ul class="warnlist">${st.warnings.map(w => `<li>${esc(w.text)}</li>`).join('')}</ul>` : '<div class="saved">점검 결과 문제 없음</div>'}</div>
     <div class="card noprint"><h2>미배정 (${unplaced.length}명)</h2><div class="pool" data-drop="pool">${unplaced.map(p => chip(p)).join('') || '<span class="hint">없음</span>'}</div>
-      <h2 style="margin-top:12px">강사·운영자 — 빈방에 끌어다 놓으세요 (${staffPool.length}명 대기)</h2>
-      <div class="pool" data-drop="pool">${staffPool.map(p => chip(p)).join('') || '<span class="hint">' + (P().some(p => p.role) ? '모두 배치했어요' : '명단 탭에서 강사·운영자를 추가하세요') + '</span>'}</div>
+      <h2 style="margin-top:12px">강사·운영자 — 이름표는 위쪽 고정 막대에서 끌어다 방에 놓으세요</h2>
+      <div class="hint">배치 대기 (${staffPool.length}명)</div>
+      <div class="pool" data-drop="pool">${staffPool.map(p => chip(p)).join('') || '<span class="hint">' + (P().some(p => p.role) ? '모두 배치했어요' : '위 이름표를 끌어서 만드세요') + '</span>'}</div>
       ${st.unplaced.length && Object.keys(st.assign).length ? '' : ''}</div>
     ${floors.map(f => `<div class="floor card"><h3>${f}층 <span class="badge">${({M:'남자 층',F:'여자 층','':'혼용'})[c.floorGender[f]||'']}</span></h3>${planHtml(f, c, r => {
       const occ = (rooms[r.id]||[]).map(id => byId[id]).filter(Boolean), g = occ[0] ? occ[0].gender : '', cap = cap_(r, c);
@@ -1043,6 +1054,21 @@ const Admin = (() => {
   }
   async function drop(id, target){
     if (A.tab !== 'assign') return;
+    if (id.startsWith('new:')){   // 새 강사·운영자 이름표
+      const [, role, g] = id.split(':');
+      if (target !== 'pool' && !target.startsWith('room:')) return;
+      const room = target.startsWith('room:') ? target.slice(5) : '';
+      const nm = prompt(role + '(' + (g === 'M' ? '남' : '여') + ') 이름을 입력하세요. 비워 두면 "' + role + '"로 표시해요.', '');
+      if (nm === null) return;
+      await act('adm_addStaff', [{ name: nm.trim() || role, gender: g, role, room }]);
+      return;
+    }
+    if (target === 'trash'){
+      const p = P().find(x => x.id === id);
+      if (!p || !p.role){ toast('강사·운영자 이름표만 지울 수 있어요', true); return; }
+      if (confirm(p.name + '(' + p.role + ') 님을 지울까요?')) await act('adm_deletePeople', [id]);
+      return;
+    }
     if (target === 'pool') return act('adm_move', id, '');
     if (target.startsWith('room:')) {
       const rid = target.slice(5), r = A.st.config.rooms.find(x => x.id === rid);
@@ -1123,6 +1149,13 @@ const Admin = (() => {
   });
   document.addEventListener('dblclick', e => {
     if (mode !== 'admin' || A.tab !== 'assign') return;
+    const sc = e.target.closest('.tag.staff[data-drag]');
+    if (sc && !sc.dataset.drag.startsWith('new:')){
+      const p = P().find(x => x.id === sc.dataset.drag); if (!p) return;
+      const nm = prompt('이름을 고치세요', p.name);
+      if (nm && nm.trim()) act('adm_updatePeople', [{ id: p.id, name: nm.trim() }]).then(() => toast('이름을 바꿨어요'));
+      return;
+    }
     const c = e.target.closest('.tag.pin'); if (c) act('adm_unpin', c.dataset.drag).then(() => toast('고정 해제'));
   });
 
